@@ -1,6 +1,6 @@
 # README #
 
-OpenGL application to load and display dynamic models. It was made to load FBX, but it should be able to load other file formats.
+OpenGL application to load and display dynamic models. It was made to load B3D files, but it should be able to load other file formats.
 
 ## Project Configuration ##
 - Need GLFW, FreeImage, GLM, GLEW, and Assimp. 
