@@ -219,10 +219,9 @@ namespace glfwFunc
 
 		//glm::scale(glm::vec3(0.208715f)) * glm::translate(glm::mat4(), glm::vec3(0.0f, -4.79286f, 1.71198))
 		
-		//dynamicObj->Import("Model/warrior.md2", glm::scale(glm::vec3(0.208715f)) * glm::translate(glm::mat4(), glm::vec3(0.0f, -4.79286f, 1.71198)));
+		//dynamicObj->Import("Model/ninja/ninja.b3d", glm::mat4(1.0f));
 
-		dynamicObj->Import("Model/Apple.off", glm::scale(glm::vec3(0.006)) * glm::translate(glm::mat4(), glm::vec3(-8,13,-12.4)));
-		//dynamicObj->Import("Model/Apple.off", glm::mat4(1.0f));
+		dynamicObj->Import("Model/ninja/ninja.b3d", glm::scale(glm::vec3(0.208715f)) * glm::translate(glm::mat4(), glm::vec3(0.0f, -4.79286f, 1.71198)));
 
 		cout << dynamicObj->GetBoundingBox().m_fMinx << " " << dynamicObj->GetBoundingBox().m_fMiny << " " << dynamicObj->GetBoundingBox().m_fMinz << endl <<
 			"  " << dynamicObj->GetBoundingBox().m_fMaxx << " " << dynamicObj->GetBoundingBox().m_fMaxy << " " << dynamicObj->GetBoundingBox().m_fMaxz << endl;

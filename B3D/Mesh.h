@@ -39,7 +39,7 @@ public:
 		// bind buffer for positions and copy data into buffer
 		// GL_ARRAY_BUFFER is the buffer type we use to feed attributes
 		glBindBuffer(GL_ARRAY_BUFFER, m_uiVbo);
-		glBufferData(GL_ARRAY_BUFFER, m_vVertexInfo.size()*sizeof(GLuint), &m_vVertexInfo[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, m_vVertexInfo.size()*sizeof(Vertex), &m_vVertexInfo[0], GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
