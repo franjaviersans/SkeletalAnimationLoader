@@ -81,14 +81,17 @@ bool TextureManager::LoadTexture2D(const char* filename, const unsigned int texI
 		return false;
 	
 	//if this texture ID is in use, unload the current texture
-	if(m_texID.find(texID) != m_texID.end())
+	if (m_texID.find(texID) != m_texID.end())
 		glDeleteTextures(1, &(m_texID[texID].id));
+	
+		
 
 	//generate an OpenGL texture ID for this texture
 	glGenTextures(1, &gl_texID);
 	//store the texture ID mapping
 	m_texID[texID].id = gl_texID;
 	m_texID[texID].type = GL_TEXTURE_2D;
+	m_texID[texID].path = filename;
 	//bind to the new texture ID
 	glBindTexture(GL_TEXTURE_2D, gl_texID);
 	//store the texture data for OpenGL use
@@ -133,6 +136,7 @@ void TextureManager::CreateTexture2D( const unsigned int texID, GLuint Width, GL
 	//store the texture ID mapping
 	m_texID[texID].id = gl_texID;
 	m_texID[texID].type = GL_TEXTURE_2D;
+	m_texID[texID].path = "";
 	//bind to the new texture ID
 	glBindTexture(GL_TEXTURE_2D, gl_texID);
 	//store the texture data for OpenGL use
@@ -177,6 +181,7 @@ void TextureManager::CreateEmptyTexture2DClampToBorder( const unsigned int texID
 	//store the texture ID mapping
 	m_texID[texID].id = gl_texID;
 	m_texID[texID].type = GL_TEXTURE_2D;
+	m_texID[texID].path = "";
 	//bind to the new texture ID
 	glBindTexture(GL_TEXTURE_2D, gl_texID);
 	//store the texture data for OpenGL use
@@ -209,6 +214,7 @@ void TextureManager::CreateTexture1D( const unsigned int texID, GLuint size,
 	//store the texture ID mapping
 	m_texID[texID].id = gl_texID;
 	m_texID[texID].type = GL_TEXTURE_1D;
+	m_texID[texID].path = "";
 	//bind to the new texture ID
 	glBindTexture(GL_TEXTURE_1D, gl_texID);
 	//store the texture data for OpenGL use
@@ -240,6 +246,7 @@ void TextureManager::CreateTexture3D( const unsigned int texID, GLuint width, GL
 	//store the texture ID mapping
 	m_texID[texID].id = gl_texID;
 	m_texID[texID].type = GL_TEXTURE_3D;
+	m_texID[texID].path = "";
 	//bind to the new texture ID
 	glBindTexture(GL_TEXTURE_3D, gl_texID);
 	//store the texture data for OpenGL use

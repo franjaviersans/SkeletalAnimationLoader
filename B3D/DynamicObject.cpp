@@ -14,6 +14,19 @@ using namespace std;
 
 
 
+inline glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4* from)
+{
+	glm::mat4 to;
+
+
+	to[0][0] = (GLfloat)from->a1; to[0][1] = (GLfloat)from->b1;  to[0][2] = (GLfloat)from->c1; to[0][3] = (GLfloat)from->d1;
+	to[1][0] = (GLfloat)from->a2; to[1][1] = (GLfloat)from->b2;  to[1][2] = (GLfloat)from->c2; to[1][3] = (GLfloat)from->d2;
+	to[2][0] = (GLfloat)from->a3; to[2][1] = (GLfloat)from->b3;  to[2][2] = (GLfloat)from->c3; to[2][3] = (GLfloat)from->d3;
+	to[3][0] = (GLfloat)from->a4; to[3][1] = (GLfloat)from->b4;  to[3][2] = (GLfloat)from->c4; to[3][3] = (GLfloat)from->d4;
+
+	return to;
+}
+
 /**
 * Default constructor
 *
@@ -59,369 +72,152 @@ DynamicObject::~DynamicObject()
  */
 void DynamicObject::Import(const char *filename, const glm::mat4 &TransformationMatrix)
 {
-	string pFile = "Model/ninja/ninja.b3d";
-	cout << "Loading " << pFile << endl;
-	m_scene = (aiScene*)m_importer.ReadFile(pFile, aiProcess_GenSmoothNormals);
+	cout << "Loading " << filename << endl;
 
-
-
-	// If the import failed, report it
-	if (!m_scene)
+	// Read file via ASSIMP
+	Assimp::Importer importer;
+	const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
+	// Check for errors
+	if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
 	{
-		std::cout << "IMPORT ERROR FOR THE OBJ FILE: " << pFile << std::endl;
-		std::cout << m_importer.GetErrorString() << std::endl;
+		cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << endl;
+		return;
 	}
 
-	//cout<<m_scene->mNumAnimations << endl;
 
-	exit(0);
+	string pFile = filename;
+	// Retrieve the directory path of the filepath
+	m_directory = pFile.substr(0, pFile.find_last_of('/'));
 
-	FILE *fp;
-	int i;
-
-	m_sFile = filename;
-
-	fopen_s (&fp, filename, "rb");
-	
-	if (!fp)
-	{
-		fprintf (stderr, "Error: couldn't open \"%s\"!\n", filename);
-		system("pause");
-		exit(0);
-	}
-
-	md2_model_t m_Object;
-
-	/* Read header */
-	fread (&m_Object.header, 1, sizeof (md2_header_t), fp);
-
-	if ((m_Object.header.ident != 844121161) ||
-		(m_Object.header.version != 8))
-	{
-		/* Error! */
-		fprintf (stderr, "Error: bad version or identifier\n");
-		fclose (fp);
-		system("pause");
-		exit(0);
-	}
-
-	/* Memory allocations */
-	m_Object.skins.resize(m_Object.header.num_skins);
-	m_Object.texcoords.resize(m_Object.header.num_st);
-	m_Object.triangles.resize(m_Object.header.num_tris);
-	m_Object.frames.resize(m_Object.header.num_frames);
-	m_Object.glcmds.resize(m_Object.header.num_glcmds);
+	// Process ASSIMP's root node recursively
+	ProcessNode(scene->mRootNode, scene, TransformationMatrix);
 
 
-	/* Read model data */
-	if(m_Object.header.num_skins != 0)
-	{
-		fseek (fp, m_Object.header.offset_skins, SEEK_SET);
-		fread (&m_Object.skins[0], sizeof (md2_skin_t),
-			m_Object.header.num_skins, fp);
-	}
-
-	if(m_Object.header.num_st != 0)
-	{
-		fseek (fp, m_Object.header.offset_st, SEEK_SET);
-		fread (&m_Object.texcoords[0], sizeof (md2_texCoord_t),
-			m_Object.header.num_st, fp);
-	}
-
-	if(m_Object.header.num_tris != 0)
-	{
-		fseek (fp, m_Object.header.offset_tris, SEEK_SET);
-		fread (&m_Object.triangles[0], sizeof (md2_triangle_t),
-			m_Object.header.num_tris, fp);
-	}
-
-	if(m_Object.header.num_glcmds != 0)
-	{
-		fseek (fp, m_Object.header.offset_glcmds, SEEK_SET);
-		fread (&m_Object.glcmds[0], sizeof (int), m_Object.header.num_glcmds, fp);
-	}
-
-	/* Read frames */
-	fseek (fp, m_Object.header.offset_frames, SEEK_SET);
-	for (i = 0; i < m_Object.header.num_frames; ++i)
-	{
-		/* Memory allocation for vertices of this frame */
-		m_Object.frames[i].verts.resize(m_Object.header.num_vertices);
-
-		/* Read frame data */
-		fread (m_Object.frames[i].scale, sizeof (vec3_t), 1, fp);
-		fread (m_Object.frames[i].translate, sizeof (vec3_t), 1, fp);
-		fread (m_Object.frames[i].name, sizeof (char), 16, fp);
-		fread (&m_Object.frames[i].verts[0], sizeof (md2_vertex_t),
-			m_Object.header.num_vertices, fp);
-	}
-
-	fclose (fp);
-
+	cout << "Despues" << endl;
 
 	///////////////////End of file read/////////////////////////
 
-	LoadTexture(&m_Object);
-	Transform(&m_Object, TransformationMatrix);
-	
-	//Free the memory from the auxiliar data structure
-	m_Object.skins.clear();
-	m_Object.texcoords.clear();
-	m_Object.triangles.clear();
-	m_Object.glcmds.clear();
- 
-    for (int i = 0; i < m_Object.header.num_frames; ++i)
-	{
-		m_Object.frames[i].verts.clear();
-	}
-
-    m_Object.frames.clear();
-
 	//End of freeing memory
 	
-	
-	InitVAO();
 }
 
-/**
-* Transform the model to a new data estructure
-*
-* @params m_vObject a pointer to the old data structure
-* @params TransformationMatrix a Matrix to transform every vertex in the model
-*
-*/
-void DynamicObject::Transform(md2_model_t * m_Object, const glm::mat4 &TransformationMatrix)
+
+Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4 &TransformationMatrix)
 {
-	//Precalculated normals
-	GLuint cc = 0;
-	glm::vec3 * m_pNormals = new glm::vec3[162];
 
-	m_pNormals[cc++] = glm::vec3(-0.525731f,  0.000000f,  0.850651f); 
-	m_pNormals[cc++] = glm::vec3(-0.442863f,  0.238856f,  0.864188f ); 
-	m_pNormals[cc++] = glm::vec3(-0.295242f,  0.000000f,  0.955423f ); 
-	m_pNormals[cc++] = glm::vec3( -0.309017f,  0.500000f,  0.809017f ); 
-	m_pNormals[cc++] = glm::vec3( -0.162460f,  0.262866f,  0.951056f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f,  0.000000f,  1.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f,  0.850651f,  0.525731f ); 
-	m_pNormals[cc++] = glm::vec3( -0.147621f,  0.716567f,  0.681718f ); 
-	m_pNormals[cc++] = glm::vec3(  0.147621f,  0.716567f,  0.681718f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f,  0.525731f,  0.850651f ); 
-	m_pNormals[cc++] = glm::vec3(  0.309017f,  0.500000f,  0.809017f ); 
-	m_pNormals[cc++] = glm::vec3(  0.525731f,  0.000000f,  0.850651f ); 
-	m_pNormals[cc++] = glm::vec3(  0.295242f,  0.000000f,  0.955423f ); 
-	m_pNormals[cc++] = glm::vec3(  0.442863f,  0.238856f,  0.864188f ); 
-	m_pNormals[cc++] = glm::vec3(  0.162460f,  0.262866f,  0.951056f ); 
-	m_pNormals[cc++] = glm::vec3( -0.681718f,  0.147621f,  0.716567f ); 
-	m_pNormals[cc++] = glm::vec3( -0.809017f,  0.309017f,  0.500000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.587785f,  0.425325f,  0.688191f ); 
-	m_pNormals[cc++] = glm::vec3( -0.850651f,  0.525731f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.864188f,  0.442863f,  0.238856f ); 
-	m_pNormals[cc++] = glm::vec3( -0.716567f,  0.681718f,  0.147621f ); 
-	m_pNormals[cc++] = glm::vec3( -0.688191f,  0.587785f,  0.425325f ); 
-	m_pNormals[cc++] = glm::vec3( -0.500000f,  0.809017f,  0.309017f ); 
-	m_pNormals[cc++] = glm::vec3( -0.238856f,  0.864188f,  0.442863f ); 
-	m_pNormals[cc++] = glm::vec3( -0.425325f,  0.688191f,  0.587785f ); 
-	m_pNormals[cc++] = glm::vec3( -0.716567f,  0.681718f, -0.147621f ); 
-	m_pNormals[cc++] = glm::vec3( -0.500000f,  0.809017f, -0.309017f ); 
-	m_pNormals[cc++] = glm::vec3( -0.525731f,  0.850651f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f,  0.850651f, -0.525731f ); 
-	m_pNormals[cc++] = glm::vec3( -0.238856f,  0.864188f, -0.442863f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f,  0.955423f, -0.295242f ); 
-	m_pNormals[cc++] = glm::vec3( -0.262866f,  0.951056f, -0.162460f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f,  1.000000f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f,  0.955423f,  0.295242f ); 
-	m_pNormals[cc++] = glm::vec3( -0.262866f,  0.951056f,  0.162460f ); 
-	m_pNormals[cc++] = glm::vec3(  0.238856f,  0.864188f,  0.442863f ); 
-	m_pNormals[cc++] = glm::vec3(  0.262866f,  0.951056f,  0.162460f ); 
-	m_pNormals[cc++] = glm::vec3(  0.500000f,  0.809017f,  0.309017f ); 
-	m_pNormals[cc++] = glm::vec3(  0.238856f,  0.864188f, -0.442863f ); 
-	m_pNormals[cc++] = glm::vec3(  0.262866f,  0.951056f, -0.162460f ); 
-	m_pNormals[cc++] = glm::vec3(  0.500000f,  0.809017f, -0.309017f ); 
-	m_pNormals[cc++] = glm::vec3(  0.850651f,  0.525731f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.716567f,  0.681718f,  0.147621f ); 
-	m_pNormals[cc++] = glm::vec3(  0.716567f,  0.681718f, -0.147621f ); 
-	m_pNormals[cc++] = glm::vec3(  0.525731f,  0.850651f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.425325f,  0.688191f,  0.587785f ); 
-	m_pNormals[cc++] = glm::vec3(  0.864188f,  0.442863f,  0.238856f ); 
-	m_pNormals[cc++] = glm::vec3(  0.688191f,  0.587785f,  0.425325f ); 
-	m_pNormals[cc++] = glm::vec3(  0.809017f,  0.309017f,  0.500000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.681718f,  0.147621f,  0.716567f ); 
-	m_pNormals[cc++] = glm::vec3(  0.587785f,  0.425325f,  0.688191f ); 
-	m_pNormals[cc++] = glm::vec3(  0.955423f,  0.295242f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  1.000000f,  0.000000f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.951056f,  0.162460f,  0.262866f ); 
-	m_pNormals[cc++] = glm::vec3(  0.850651f, -0.525731f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.955423f, -0.295242f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.864188f, -0.442863f,  0.238856f ); 
-	m_pNormals[cc++] = glm::vec3(  0.951056f, -0.162460f,  0.262866f ); 
-	m_pNormals[cc++] = glm::vec3(  0.809017f, -0.309017f,  0.500000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.681718f, -0.147621f,  0.716567f ); 
-	m_pNormals[cc++] = glm::vec3(  0.850651f,  0.000000f,  0.525731f ); 
-	m_pNormals[cc++] = glm::vec3(  0.864188f,  0.442863f, -0.238856f ); 
-	m_pNormals[cc++] = glm::vec3(  0.809017f,  0.309017f, -0.500000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.951056f,  0.162460f, -0.262866f ); 
-	m_pNormals[cc++] = glm::vec3(  0.525731f,  0.000000f, -0.850651f ); 
-	m_pNormals[cc++] = glm::vec3(  0.681718f,  0.147621f, -0.716567f ); 
-	m_pNormals[cc++] = glm::vec3(  0.681718f, -0.147621f, -0.716567f ); 
-	m_pNormals[cc++] = glm::vec3(  0.850651f,  0.000000f, -0.525731f ); 
-	m_pNormals[cc++] = glm::vec3(  0.809017f, -0.309017f, -0.500000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.864188f, -0.442863f, -0.238856f ); 
-	m_pNormals[cc++] = glm::vec3(  0.951056f, -0.162460f, -0.262866f ); 
-	m_pNormals[cc++] = glm::vec3(  0.147621f,  0.716567f, -0.681718f ); 
-	m_pNormals[cc++] = glm::vec3(  0.309017f,  0.500000f, -0.809017f ); 
-	m_pNormals[cc++] = glm::vec3(  0.425325f,  0.688191f, -0.587785f ); 
-	m_pNormals[cc++] = glm::vec3(  0.442863f,  0.238856f, -0.864188f ); 
-	m_pNormals[cc++] = glm::vec3(  0.587785f,  0.425325f, -0.688191f ); 
-	m_pNormals[cc++] = glm::vec3(  0.688191f,  0.587785f, -0.425325f ); 
-	m_pNormals[cc++] = glm::vec3( -0.147621f,  0.716567f, -0.681718f ); 
-	m_pNormals[cc++] = glm::vec3( -0.309017f,  0.500000f, -0.809017f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f,  0.525731f, -0.850651f ); 
-	m_pNormals[cc++] = glm::vec3( -0.525731f,  0.000000f, -0.850651f ); 
-	m_pNormals[cc++] = glm::vec3( -0.442863f,  0.238856f, -0.864188f ); 
-	m_pNormals[cc++] = glm::vec3( -0.295242f,  0.000000f, -0.955423f ); 
-	m_pNormals[cc++] = glm::vec3( -0.162460f,  0.262866f, -0.951056f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f,  0.000000f, -1.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.295242f,  0.000000f, -0.955423f ); 
-	m_pNormals[cc++] = glm::vec3(  0.162460f,  0.262866f, -0.951056f ); 
-	m_pNormals[cc++] = glm::vec3( -0.442863f, -0.238856f, -0.864188f ); 
-	m_pNormals[cc++] = glm::vec3( -0.309017f, -0.500000f, -0.809017f ); 
-	m_pNormals[cc++] = glm::vec3( -0.162460f, -0.262866f, -0.951056f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f, -0.850651f, -0.525731f ); 
-	m_pNormals[cc++] = glm::vec3( -0.147621f, -0.716567f, -0.681718f ); 
-	m_pNormals[cc++] = glm::vec3(  0.147621f, -0.716567f, -0.681718f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f, -0.525731f, -0.850651f ); 
-	m_pNormals[cc++] = glm::vec3(  0.309017f, -0.500000f, -0.809017f ); 
-	m_pNormals[cc++] = glm::vec3(  0.442863f, -0.238856f, -0.864188f ); 
-	m_pNormals[cc++] = glm::vec3(  0.162460f, -0.262866f, -0.951056f ); 
-	m_pNormals[cc++] = glm::vec3(  0.238856f, -0.864188f, -0.442863f ); 
-	m_pNormals[cc++] = glm::vec3(  0.500000f, -0.809017f, -0.309017f ); 
-	m_pNormals[cc++] = glm::vec3(  0.425325f, -0.688191f, -0.587785f ); 
-	m_pNormals[cc++] = glm::vec3(  0.716567f, -0.681718f, -0.147621f ); 
-	m_pNormals[cc++] = glm::vec3(  0.688191f, -0.587785f, -0.425325f ); 
-	m_pNormals[cc++] = glm::vec3(  0.587785f, -0.425325f, -0.688191f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f, -0.955423f, -0.295242f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f, -1.000000f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3(  0.262866f, -0.951056f, -0.162460f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f, -0.850651f,  0.525731f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f, -0.955423f,  0.295242f ); 
-	m_pNormals[cc++] = glm::vec3(  0.238856f, -0.864188f,  0.442863f ); 
-	m_pNormals[cc++] = glm::vec3(  0.262866f, -0.951056f,  0.162460f ); 
-	m_pNormals[cc++] = glm::vec3(  0.500000f, -0.809017f,  0.309017f ); 
-	m_pNormals[cc++] = glm::vec3(  0.716567f, -0.681718f,  0.147621f ); 
-	m_pNormals[cc++] = glm::vec3(  0.525731f, -0.850651f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.238856f, -0.864188f, -0.442863f ); 
-	m_pNormals[cc++] = glm::vec3( -0.500000f, -0.809017f, -0.309017f ); 
-	m_pNormals[cc++] = glm::vec3( -0.262866f, -0.951056f, -0.162460f ); 
-	m_pNormals[cc++] = glm::vec3( -0.850651f, -0.525731f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.716567f, -0.681718f, -0.147621f ); 
-	m_pNormals[cc++] = glm::vec3( -0.716567f, -0.681718f,  0.147621f ); 
-	m_pNormals[cc++] = glm::vec3( -0.525731f, -0.850651f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.500000f, -0.809017f,  0.309017f ); 
-	m_pNormals[cc++] = glm::vec3( -0.238856f, -0.864188f,  0.442863f ); 
-	m_pNormals[cc++] = glm::vec3( -0.262866f, -0.951056f,  0.162460f ); 
-	m_pNormals[cc++] = glm::vec3( -0.864188f, -0.442863f,  0.238856f ); 
-	m_pNormals[cc++] = glm::vec3( -0.809017f, -0.309017f,  0.500000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.688191f, -0.587785f,  0.425325f ); 
-	m_pNormals[cc++] = glm::vec3( -0.681718f, -0.147621f,  0.716567f ); 
-	m_pNormals[cc++] = glm::vec3( -0.442863f, -0.238856f,  0.864188f ); 
-	m_pNormals[cc++] = glm::vec3( -0.587785f, -0.425325f,  0.688191f ); 
-	m_pNormals[cc++] = glm::vec3( -0.309017f, -0.500000f,  0.809017f ); 
-	m_pNormals[cc++] = glm::vec3( -0.147621f, -0.716567f,  0.681718f ); 
-	m_pNormals[cc++] = glm::vec3( -0.425325f, -0.688191f,  0.587785f ); 
-	m_pNormals[cc++] = glm::vec3( -0.162460f, -0.262866f,  0.951056f ); 
-	m_pNormals[cc++] = glm::vec3(  0.442863f, -0.238856f,  0.864188f ); 
-	m_pNormals[cc++] = glm::vec3(  0.162460f, -0.262866f,  0.951056f ); 
-	m_pNormals[cc++] = glm::vec3(  0.309017f, -0.500000f,  0.809017f ); 
-	m_pNormals[cc++] = glm::vec3(  0.147621f, -0.716567f,  0.681718f ); 
-	m_pNormals[cc++] = glm::vec3(  0.000000f, -0.525731f,  0.850651f ); 
-	m_pNormals[cc++] = glm::vec3(  0.425325f, -0.688191f,  0.587785f ); 
-	m_pNormals[cc++] = glm::vec3(  0.587785f, -0.425325f,  0.688191f ); 
-	m_pNormals[cc++] = glm::vec3(  0.688191f, -0.587785f,  0.425325f ); 
-	m_pNormals[cc++] = glm::vec3( -0.955423f,  0.295242f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.951056f,  0.162460f,  0.262866f ); 
-	m_pNormals[cc++] = glm::vec3( -1.000000f,  0.000000f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.850651f,  0.000000f,  0.525731f ); 
-	m_pNormals[cc++] = glm::vec3( -0.955423f, -0.295242f,  0.000000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.951056f, -0.162460f,  0.262866f ); 
-	m_pNormals[cc++] = glm::vec3( -0.864188f,  0.442863f, -0.238856f ); 
-	m_pNormals[cc++] = glm::vec3( -0.951056f,  0.162460f, -0.262866f ); 
-	m_pNormals[cc++] = glm::vec3( -0.809017f,  0.309017f, -0.500000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.864188f, -0.442863f, -0.238856f ); 
-	m_pNormals[cc++] = glm::vec3( -0.951056f, -0.162460f, -0.262866f ); 
-	m_pNormals[cc++] = glm::vec3( -0.809017f, -0.309017f, -0.500000f ); 
-	m_pNormals[cc++] = glm::vec3( -0.681718f,  0.147621f, -0.716567f ); 
-	m_pNormals[cc++] = glm::vec3( -0.681718f, -0.147621f, -0.716567f ); 
-	m_pNormals[cc++] = glm::vec3( -0.850651f,  0.000000f, -0.525731f ); 
-	m_pNormals[cc++] = glm::vec3( -0.688191f,  0.587785f, -0.425325f ); 
-	m_pNormals[cc++] = glm::vec3( -0.587785f,  0.425325f, -0.688191f ); 
-	m_pNormals[cc++] = glm::vec3( -0.425325f,  0.688191f, -0.587785f ); 
-	m_pNormals[cc++] = glm::vec3( -0.425325f, -0.688191f, -0.587785f ); 
-	m_pNormals[cc++] = glm::vec3( -0.587785f, -0.425325f, -0.688191f ); 
-	m_pNormals[cc++] = glm::vec3( -0.688191f, -0.587785f, -0.425325f );
+	if (!mesh->HasBones()) cout << "This mesh doesn't have bones" << endl;
+	
+	
+	cout << "Testing some stuff " << mesh->mNumBones << endl;
+
+	Mesh data;
 
 
-	//Every md2 model have to be rotated in this way
-	glm::mat4 FinalTransform =	TransformationMatrix *
-								glm::rotate(-90.0f,glm::vec3(1.0f,0.0f,0.0f)) * 
-								glm::rotate(-90.0f,glm::vec3(0.0f,0.0f,1.0f));
-
-	int i, j;
-	md2_frame_t *pframe;
-	md2_vertex_t *pvert;
-	vec3_t v_curr, norm;
-	glm::vec3 n_curr;
-
-	m_finalObject.resize(m_Object->frames.size());
-	Vertex aux_vertex;
-	vector<Vertex> aux_frame;
-
-	for(GLuint k =0; k < m_Object->frames.size(); ++k)
+	// Walk through each of the mesh's vertices
+	for (GLuint i = 0; i < mesh->mNumVertices; i++)
 	{
-		aux_frame.resize( m_Object->header.num_tris * 3);
+		Vertex vertex;
+		// Positions
+		vertex.WorldCoord.x = mesh->mVertices[i].x;
+		vertex.WorldCoord.y = mesh->mVertices[i].y;
+		vertex.WorldCoord.z = mesh->mVertices[i].z;
+		vertex.WorldCoord.w = 1.0f;
 
-		for (i = 0; i < m_Object->header.num_tris; ++i)
+		vertex.WorldCoord = TransformationMatrix * vertex.WorldCoord; //transform vertex
+		
+
+		m_bb.AppendPoint(vertex.WorldCoord.x, vertex.WorldCoord.y, vertex.WorldCoord.z);
+		
+		// Normals
+		vertex.NormalCoord.x = mesh->mNormals[i].x;
+		vertex.NormalCoord.y = mesh->mNormals[i].y;
+		vertex.NormalCoord.z = mesh->mNormals[i].z;
+
+		vertex.NormalCoord = glm::vec3(glm::inverse(glm::transpose(TransformationMatrix)) * glm::vec4(vertex.NormalCoord, 0.0f)); //transform vertex
+
+
+		// Texture Coordinates
+		if (mesh->mTextureCoords[0]) // Does the mesh contain texture coordinates?
 		{
-			/* Draw each vertex */
-			for (j = 0; j < 3; ++j)
-			{
-			
-				pframe = &m_Object->frames[k];
-				pvert = &pframe->verts[m_Object->triangles[i].vertex[j]];
-
-				/* Compute texture coordinates */
-				aux_vertex.TextureCoord = glm::vec2(	((GLfloat)m_Object->texcoords[m_Object->triangles[i].st[j]].s / m_Object->header.skinwidth),
-														1.0f - ((GLfloat)m_Object->texcoords[m_Object->triangles[i].st[j]].t / m_Object->header.skinheight));
-
-
-				/* Interpolate normals */
-				n_curr = m_pNormals[pvert->normalIndex];
-
-				norm[0] = n_curr[0];
-				norm[1] = n_curr[1];
-				norm[2] = n_curr[2];
-
-				aux_vertex.NormalCoord = glm::vec3(norm[0], norm[1], norm[2]);
-
-				/* Interpolate vertices */
-				v_curr[0] = pframe->scale[0] * pvert->v[0] + pframe->translate[0];
-				v_curr[1] = pframe->scale[1] * pvert->v[1] + pframe->translate[1];
-				v_curr[2] = pframe->scale[2] * pvert->v[2] + pframe->translate[2];
-
-
-				aux_vertex.WorldCoord = FinalTransform * glm::vec4(v_curr[0],v_curr[1],v_curr[2],1.0f);
-
-
-				m_bb.AppendPoint(aux_vertex.WorldCoord.x,aux_vertex.WorldCoord.y,aux_vertex.WorldCoord.z);
-
-				aux_frame[i*3 + j] = aux_vertex;
-			}
+			// A vertex can contain up to 8 different texture coordinates. We thus make the assumption that we won't 
+			// use models where a vertex can have multiple texture coordinates so we always take the first set (0).
+			vertex.TextureCoord.x = mesh->mTextureCoords[0][i].x;
+			vertex.TextureCoord.y = mesh->mTextureCoords[0][i].y;
 		}
+		else
+			vertex.TextureCoord = glm::vec2(0.0f, 0.0f);
 
-		m_finalObject[k] = aux_frame;
+		data.m_vVertexInfo.push_back(vertex);
+	}
+	// Now wak through each of the mesh's faces (a face is a mesh its triangle) and retrieve the corresponding vertex indices.
+	for (GLuint i = 0; i < mesh->mNumFaces; i++)
+	{
+		aiFace face = mesh->mFaces[i];
+		// Retrieve all indices of the face and store them in the indices vector
+		for (GLuint j = 0; j < face.mNumIndices; j++)
+			data.m_vIndex.push_back(face.mIndices[j]);
+
 	}
 
-	delete m_pNormals;
+
+	data.setupMesh();
+
+	//Process Bones
+	/*for (int i = 0; i < mesh->mNumBones; ++i){
+
+
+	}*/
+
+
+
+
+
+	// Process materials
+	if (mesh->mMaterialIndex >= 0)
+	{
+		/*aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+		// We assume a convention for sampler names in the shaders. Each diffuse texture should be named
+		// as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER. 
+		// Same applies to other texture as the following list summarizes:
+		// Diffuse: texture_diffuseN
+		// Specular: texture_specularN
+		// Normal: texture_normalN
+
+		// 1. Diffuse maps
+		vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		// 2. Specular maps
+		vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());*/
+	}
+
+	// Return a mesh object created from the extracted mesh data
+	return data;
 }
+
+void DynamicObject::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4 &TransformationMatrix)
+{
+
+	glm::mat4 trans = aiMatrix4x4ToGlm(&node->mTransformation);
+
+	// Process each mesh located at the current node
+	for (GLuint i = 0; i < node->mNumMeshes; i++)
+	{
+		// The node object only contains indices to index the actual objects in the scene. 
+		// The scene contains all the data, node is just to keep stuff organized (like relations between nodes).
+		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+		
+		m_vMeshes.push_back(ProcessMesh(mesh, scene, TransformationMatrix * trans));
+	}
+	// After we've processed all of the meshes (if any) we then recursively process each of the children nodes
+	for (GLuint i = 0; i < node->mNumChildren; i++)
+	{
+		
+		ProcessNode(node->mChildren[i], scene, TransformationMatrix * trans);
+	}
+
+}
+
 
 /**
  * Calculate the current frame in animation beginning at frame
@@ -458,68 +254,9 @@ void DynamicObject::Animate (float time)
 */
 void DynamicObject::Draw()
 {
-	//Bind Buffers
-	glBindBuffer(GL_ARRAY_BUFFER, m_iVao);
-
-	//Enable Texture
-	glActiveTexture(GL_TEXTURE0);
-
-	
-	glDrawArrays(GL_TRIANGLES,0, m_vVertex.size());
-
-
-	//Unbid Buffer
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	glDisableVertexAttribArray(WORLD_COORD_LOCATION);
-	glDisableVertexAttribArray(NORMAL_COORD_LOCATION);
-	glDisableVertexAttribArray(TEXTURE_COORD_LOCATION);
-}
-
-/**
-* Initialize Vertex Buffer Object
-*/		
-void  DynamicObject::InitVAO()
-{
-	m_vVertex.resize(m_finalObject[0].size());
-
-	glGenBuffers(1, &m_Vbo);
-
-	// bind buffer for positions and copy data into buffer
-	// GL_ARRAY_BUFFER is the buffer type we use to feed attributes
-	glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
- 
-	//Set buffer to null with Stream Draw for dynamic feeding
-	glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STREAM_DRAW);
-
-	//Disable Buffers and vertex attributes
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	
-	//Generate the VAO
-	glGenVertexArrays(1, &m_iVao);
-	glBindVertexArray(m_iVao);
-
-	// bind buffer for positions and copy data into buffer
-	// GL_ARRAY_BUFFER is the buffer type we use to feed attributes
-	glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
-
-	glEnableVertexAttribArray(WORLD_COORD_LOCATION);
-	glEnableVertexAttribArray(NORMAL_COORD_LOCATION);
-	glEnableVertexAttribArray(TEXTURE_COORD_LOCATION);
-
-
-	glVertexAttribPointer(WORLD_COORD_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(0)); //Vertexs
-	glVertexAttribPointer(NORMAL_COORD_LOCATION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 4)); //Normals
-	glVertexAttribPointer(TEXTURE_COORD_LOCATION, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 7)); //Text Coords
-
-	//Unbind the vertex array	
-	glBindVertexArray(0);
-
-
-	//Disable Buffers and vertex attributes
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	for (int i = 0; i < m_vMeshes.size(); ++i){
+		m_vMeshes[i].Draw();
+	}
 }
 
 /**
@@ -528,7 +265,7 @@ void  DynamicObject::InitVAO()
 void  DynamicObject::UpdateVAO()
 {
 	
-	/* Check if n is in a valid range */
+	/* Check if n is in a valid range 
 	if ((m_iFrame < 0) || (m_iFrame > m_finalObject.size() - 1))
 	return;
 	
@@ -537,16 +274,16 @@ void  DynamicObject::UpdateVAO()
 	for(GLuint i=0 ;i < m_finalObject[m_iFrame].size();++i)
 	{
 		
-		/* Compute texture coordinates */
+		// Compute texture coordinates 
 		aux_vertex.TextureCoord = m_finalObject[m_iFrame][i].TextureCoord;
 
 			
-		/* Interpolate normals */
+		// Interpolate normals 
 		aux_vertex.NormalCoord =	m_finalObject[m_iFrame][i].NormalCoord + 
 									m_fInterpolation * ( m_finalObject[m_iFrame + 1][i].NormalCoord
 														- m_finalObject[m_iFrame][i].NormalCoord);
 
-		/* Interpolate vertices */
+		// Interpolate vertices 
 		aux_vertex.WorldCoord = m_finalObject[m_iFrame][i].WorldCoord + 
 								m_fInterpolation * ( m_finalObject[m_iFrame + 1][i].WorldCoord
 														- m_finalObject[m_iFrame][i].WorldCoord);
@@ -564,7 +301,7 @@ void  DynamicObject::UpdateVAO()
 	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m_vVertex.size(), &m_vVertex[0], GL_STREAM_DRAW);
 
 	//Disable Buffers and vertex attributes
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);*/
 
 }
 
@@ -574,9 +311,9 @@ void  DynamicObject::UpdateVAO()
 * @params m_Object a pointer to the md2 structure
 * 
 */
-void DynamicObject::LoadTexture(md2_model_t * m_Object)
+/*void DynamicObject::LoadTexture(md2_model_t * m_Object)
 {
-	/*if(m_Object->header.num_skins != 0)
+	if(m_Object->header.num_skins != 0)
 	{
 
 		m_pText = new Texture();
@@ -593,8 +330,8 @@ void DynamicObject::LoadTexture(md2_model_t * m_Object)
 		//Load a white texture in case the model doesn't have one
 		m_pText = new Texture();
 		m_pText->LoadTexture("Scene/white.png");
-	}*/
-}
+	}
+}*/
 
 /**
 * Get Texture Width

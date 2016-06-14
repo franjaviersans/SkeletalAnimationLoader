@@ -35,7 +35,7 @@ namespace glfwFunc
 
 
 	int inicio = 40, fin = 60;
-	DynamicObject * md2file = NULL;
+	DynamicObject * dynamicObj = NULL;
 
 
 	///< Callback function used by GLFW to capture some possible error.
@@ -137,27 +137,32 @@ namespace glfwFunc
 	///< The main rendering function.
 	void draw()
 	{
-
 		GLenum err = GL_NO_ERROR;
 		while ((err = glGetError()) != GL_NO_ERROR)
 		{
 			std::cout << "INICIO " << err << std::endl;
 		}
 
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		//Draw a Cube
 		m_program.use();
 		{
+
+			mModelViewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -3.0f));
 
 			m_program.setUniform("Projection", mProjMatrix);
 			m_program.setUniform("modelView", mModelViewMatrix);
 
 
-			md2file->Animate(double(0));
-			md2file->UpdateVAO();
+			
 
-			glFrontFace(GL_CW);
-			md2file->Draw();
-			glFrontFace(GL_CCW);
+			/*md2file->Animate(double(0));
+			md2file->UpdateVAO();*/
+
+			//glFrontFace(GL_CW);
+			dynamicObj->Draw();
+			//glFrontFace(GL_CCW);
 		}
 
 		glfwSwapBuffers(glfwWindow);
@@ -171,7 +176,7 @@ namespace glfwFunc
 	bool initialize()
 	{
 		glEnable(GL_DEPTH_TEST);
-		glEnable(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
 		glFrontFace(GL_CCW);
 		glCullFace(GL_BACK);
 
@@ -207,10 +212,45 @@ namespace glfwFunc
 		}
 
 
-		md2file = new DynamicObject(1.0f, 512, 512, 0, 15);
+		dynamicObj = new DynamicObject(1.0f, 512, 512, 0, 15);
 
-		md2file->Import("Model/warrior.md2", glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 0.0f))*glm::scale(glm::vec3(0.02, 0.02, 0.02)));
 
+		//glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 0.0f))*glm::scale(glm::vec3(0.02, 0.02, 0.02))
+
+		//glm::scale(glm::vec3(0.208715f)) * glm::translate(glm::mat4(), glm::vec3(0.0f, -4.79286f, 1.71198))
+		
+		//dynamicObj->Import("Model/warrior.md2", glm::scale(glm::vec3(0.208715f)) * glm::translate(glm::mat4(), glm::vec3(0.0f, -4.79286f, 1.71198)));
+
+		dynamicObj->Import("Model/Apple.off", glm::scale(glm::vec3(0.006)) * glm::translate(glm::mat4(), glm::vec3(-8,13,-12.4)));
+		//dynamicObj->Import("Model/Apple.off", glm::mat4(1.0f));
+
+		cout << dynamicObj->GetBoundingBox().m_fMinx << " " << dynamicObj->GetBoundingBox().m_fMiny << " " << dynamicObj->GetBoundingBox().m_fMinz << endl <<
+			"  " << dynamicObj->GetBoundingBox().m_fMaxx << " " << dynamicObj->GetBoundingBox().m_fMaxy << " " << dynamicObj->GetBoundingBox().m_fMaxz << endl;
+
+
+		glm::mat4 trans = glm::translate(glm::mat4(), glm::vec3(
+			(dynamicObj->GetBoundingBox().m_fMaxx + dynamicObj->GetBoundingBox().m_fMinx) / 2.0f,
+			(dynamicObj->GetBoundingBox().m_fMaxy + dynamicObj->GetBoundingBox().m_fMiny) / 2.0f,
+			(dynamicObj->GetBoundingBox().m_fMaxz + dynamicObj->GetBoundingBox().m_fMinz) / 2.0f)
+									);
+
+		float s = 1.0f / max((dynamicObj->GetBoundingBox().m_fMaxx - dynamicObj->GetBoundingBox().m_fMinx)/2.0f,
+			max((dynamicObj->GetBoundingBox().m_fMaxy - dynamicObj->GetBoundingBox().m_fMiny) / 2.0f,
+			(dynamicObj->GetBoundingBox().m_fMaxz - dynamicObj->GetBoundingBox().m_fMinz) / 2.0f));
+
+		glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(s));
+
+		cout << s << endl;
+		cout << (dynamicObj->GetBoundingBox().m_fMaxx + dynamicObj->GetBoundingBox().m_fMinx) / 2.0f << "  " << 
+			(dynamicObj->GetBoundingBox().m_fMaxy + dynamicObj->GetBoundingBox().m_fMiny) / 2.0f << "  " << 
+			(dynamicObj->GetBoundingBox().m_fMaxz + dynamicObj->GetBoundingBox().m_fMinz) / 2.0f << endl;
+
+		glm::mat4 trans2 = glm::translate(glm::mat4(), glm::vec3(0.0f,0.0f, -3.0f));
+
+		mModelViewMatrix = trans2 * scale * -trans;
+
+
+		mModelViewMatrix = trans2;
 
 		return true;
 	}
@@ -220,7 +260,7 @@ namespace glfwFunc
 	void destroy()
 	{
 		TextureManager::Inst()->UnloadAllTextures();
-		if (md2file) md2file->~DynamicObject();
+		if (dynamicObj) dynamicObj->~DynamicObject();
 		glfwTerminate();
 		glfwDestroyWindow(glfwWindow);
 	}

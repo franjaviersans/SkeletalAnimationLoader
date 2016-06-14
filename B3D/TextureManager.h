@@ -71,6 +71,7 @@ protected:
 	struct tex{
 		GLuint id;
 		GLenum type;
+		std::string path;
 	};
 
 	TextureManager();

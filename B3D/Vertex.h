@@ -10,7 +10,7 @@
 
 
 //Includes
-
+#include "Definitions.h"
 
 
 /**
@@ -24,6 +24,17 @@ class Vertex
 		glm::vec4 WorldCoord;
 		glm::vec3 NormalCoord;
 		glm::vec2 TextureCoord;
+		glm::vec4 BoneID;
+		glm::ivec4 BoneWeight;
+
+		//Default Constructor
+		Vertex() :	
+			WorldCoord(0.0f, 0.0f, 0.0f, 0.0f),
+			NormalCoord(0.0f, 0.0f, 0.0f),
+			TextureCoord(0.0f, 0.0f),
+			BoneID(0, 0, 0, 0),
+			BoneWeight(0.0f, 0.0f, 0.0f, 0.0f)
+		{}
 };
 
 

@@ -81,6 +81,7 @@
     <ClInclude Include="Definitions.h" />
     <ClInclude Include="DynamicObject.h" />
     <ClInclude Include="GLSLProgram.h" />
+    <ClInclude Include="Mesh.h" />
     <ClInclude Include="TextureManager.h" />
     <ClInclude Include="Vertex.h" />
   </ItemGroup>
