@@ -254,6 +254,12 @@ void GLSLProgram::setUniform(const char *name, const mat4 & m)
 	glUniformMatrix4fv(loc, 1, GL_FALSE, &m[0][0]);
 }
 
+void GLSLProgram::setUniform(const char *name, GLuint count, const mat4 * m)
+{
+	GLint loc = getUniformLocation(name);
+	glUniformMatrix4fv(loc, count, GL_FALSE, &(m[0][0][0]));
+}
+
 void GLSLProgram::setUniform(const char *name, const mat3 & m)
 {
 	GLint loc = getUniformLocation(name);

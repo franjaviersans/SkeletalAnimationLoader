@@ -77,6 +77,7 @@ public:
 	void   setUniform(const char *name, const vec4 & v);
 	void   setUniform(const char *name, const mat4 & m);
 	void   setUniform(const char *name, const mat3 & m);
+	void   setUniform(const char *name, GLuint count, const mat4 * m);
 	void   setUniform(const char *name, float val);
 	void   setUniform(const char *name, int val);
 	void   setUniform(const char *name, bool val);

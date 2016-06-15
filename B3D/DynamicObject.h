@@ -19,6 +19,14 @@
 #include <vector>
 
 
+
+
+class BoneInfo{
+	public:
+		glm::mat4 m_Offset;
+};
+
+
 /**
 * Class DynamicObject.
 * A Class to track the GPU time from different part of the program
@@ -57,6 +65,10 @@ class DynamicObject
 		///Method to get Bounding Box
 		BoundingBox GetBoundingBox();
 
+		std::vector<glm::mat4>& getBonesMatrix(GLuint &count){ count = m_transforms.size(); return m_transforms; }
+
+		void BoneHeirarchyTransform(float AnimationTime, const aiNode *pNode, const glm::mat4 & parentTransform);
+
 	private:
 		
 		Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4 &TransformationMatrix);
@@ -68,13 +80,19 @@ class DynamicObject
 	public:
 		GLfloat m_fInterpolation, m_fAnimationVelocity;
 		std::vector<Mesh> m_vMeshes;
+		std::map<std::string, GLuint> m_BoneMapping;
+		GLuint m_NumBones;
+		std::vector<BoneInfo> m_BoneInfo;
+		std::vector<glm::mat4> m_transforms;
 
 		/*Texture * m_pText;*/
 		std::string m_sFile;
 		GLuint m_iWidth, m_iHeight, m_iVao, m_Vbo, m_iFrame, m_iStart, m_iEnd;;
 		BoundingBox m_bb;
 		std::string m_directory;
-
+		const aiScene* scene;
+		Assimp::Importer importer;
+		
 };
 
 

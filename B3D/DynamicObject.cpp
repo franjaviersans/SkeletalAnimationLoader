@@ -48,6 +48,8 @@ DynamicObject::DynamicObject(GLfloat velocity, GLuint Width, GLuint Height, GLin
 	m_iEnd = end;
 
 	m_bb.Init();
+
+	m_NumBones = 0;
 }
 
 /**
@@ -75,8 +77,7 @@ void DynamicObject::Import(const char *filename, const glm::mat4 &Transformation
 	cout << "Loading " << filename << endl;
 
 	// Read file via ASSIMP
-	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
+	scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
 	// Check for errors
 	if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
 	{
@@ -93,11 +94,11 @@ void DynamicObject::Import(const char *filename, const glm::mat4 &Transformation
 	ProcessNode(scene->mRootNode, scene, TransformationMatrix);
 
 
-	cout << "Despues" << endl;
-
-	///////////////////End of file read/////////////////////////
-
-	//End of freeing memory
+	//popullate the auxiliar array of transformations
+	for (int i = 0; i < m_BoneInfo.size(); ++i){
+		glm::mat4 m = glm::mat4(1.0f);
+		m_transforms.push_back(m);
+	}
 	
 }
 
@@ -160,13 +161,53 @@ Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::m
 	}
 
 
-	data.setupMesh();
+
 
 	//Process Bones
-	/*for (int i = 0; i < mesh->mNumBones; ++i){
+	for (GLuint j = 0; j < mesh->mNumBones; ++j){
+		GLuint BoneIndex = 0;
+		string BoneName(mesh->mBones[j]->mName.data);
+
+		//get and index for the bone
+		if (m_BoneMapping.find(BoneName) == m_BoneMapping.end()) {
+			BoneIndex = m_NumBones;
+			m_NumBones++;
+			BoneInfo bi;
+			m_BoneInfo.push_back(bi);
+		}
+		else{
+			BoneIndex = m_BoneMapping[BoneName];
+		}
+
+		//Store the information of the bone
+		m_BoneMapping[BoneName] = BoneIndex;
+		m_BoneInfo[BoneIndex].m_Offset = aiMatrix4x4ToGlm(&mesh->mBones[j]->mOffsetMatrix);
 
 
-	}*/
+		//search for every where does he influences
+		for (GLuint k = 0; k < mesh->mBones[j]->mNumWeights; ++k){
+			GLuint vertID = mesh->mBones[j]->mWeights[k].mVertexId;
+			GLfloat weight = mesh->mBones[j]->mWeights[k].mWeight;
+
+			//store the information on the vector
+			GLuint l = 0;
+			for (l = 0; l < NumBones; ++l){
+				if (data.m_vVertexInfo[vertID].BoneWeight[l] < 0.00001f){
+					data.m_vVertexInfo[vertID].BoneWeight[l] = weight;
+					data.m_vVertexInfo[vertID].BoneID[l] = BoneIndex;
+					l = 100;
+				} 
+			}
+			if (l >= NumBones && l< 100)	std::cout << "We need more bones!!!"<< std::endl;
+		}
+
+	}
+
+	
+	//create the VBO and VAO for this mesh
+	data.setupMesh();
+
+	
 
 
 
@@ -246,6 +287,34 @@ void DynamicObject::Animate (float time)
 		if (m_iFrame >= m_iEnd)
 			m_iFrame = m_iStart;
 	}
+
+	std::cout << "Hola " << scene->mNumAnimations << std::endl;
+
+	glm::mat4 m = glm::mat4(1.0f);
+
+	BoneHeirarchyTransform(time, scene->mRootNode, m);
+
+}
+
+
+void DynamicObject::BoneHeirarchyTransform(float AnimationTime, const aiNode *pNode, const glm::mat4 & parentTransform)
+{
+	string Nodename(pNode->mName.data);
+	cout << pNode->mName.data << endl;
+	//const aiAnimation
+
+	const aiNodeAnim * pNodeAnim = NULL;
+
+	glm::mat4 NodeTrans= glm::mat4(1.0f);
+
+	if (pNodeAnim){
+
+
+	}
+
+	glm::mat4 transform = parentTransform;
+
+
 }
 
 

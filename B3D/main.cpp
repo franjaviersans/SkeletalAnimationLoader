@@ -155,14 +155,14 @@ namespace glfwFunc
 			m_program.setUniform("modelView", mModelViewMatrix);
 
 
-			
+			GLuint count = 0;
+			std::vector<glm::mat4> arr = dynamicObj->getBonesMatrix(count);
+			m_program.setUniform("gBones", count, arr.data());
 
-			/*md2file->Animate(double(0));
-			md2file->UpdateVAO();*/
+			dynamicObj->Animate(double(0));
+			//md2file->UpdateVAO();
 
-			//glFrontFace(GL_CW);
 			dynamicObj->Draw();
-			//glFrontFace(GL_CCW);
 		}
 
 		glfwSwapBuffers(glfwWindow);
@@ -176,7 +176,7 @@ namespace glfwFunc
 	bool initialize()
 	{
 		glEnable(GL_DEPTH_TEST);
-		glDisable(GL_CULL_FACE);
+		glEnable(GL_CULL_FACE);
 		glFrontFace(GL_CCW);
 		glCullFace(GL_BACK);
 
