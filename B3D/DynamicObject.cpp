@@ -44,7 +44,7 @@ inline glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4 from)
 * @params end the end frame of the animation
 *
 */
-DynamicObject::DynamicObject(GLfloat velocity, GLuint Width, GLuint Height, GLfloat start, GLfloat end)
+DynamicObject::DynamicObject(GLfloat velocity, GLuint Width, GLuint Height, GLdouble start, GLdouble end)
 {
 	m_fAnimationVelocity = velocity;
 
@@ -237,7 +237,6 @@ void DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::m
 			//If not... load it
 			if (data.m_uitextureID == 90000){
 				data.m_uitextureID = TextureManager::Inst()->GenerateID();
-				cout << m_directory + fileName << endl;
 				data.m_textureName = fileName;
 
 				if (!TextureManager::Inst()->LoadTexture2D((m_directory +"/"+ fileName).c_str(), data.m_uitextureID)){
@@ -293,7 +292,7 @@ void DynamicObject::ProcessNode(aiNode* node, const aiScene* scene, const glm::m
  * @params time is the time elapsed from the previos time
  *
  */
-void DynamicObject::Animate (float time)
+void DynamicObject::Animate (double time)
 {
 	if(m_fInterpolation <= 0.0f)
 		m_fInterpolation  = 0.0f;
