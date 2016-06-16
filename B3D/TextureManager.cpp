@@ -25,6 +25,8 @@ TextureManager::TextureManager()
 	#ifdef FREEIMAGE_LIB
 		FreeImage_Initialise();
 	#endif
+
+	generateFrom = 1000;
 }
 
 //these should never be called
@@ -319,4 +321,9 @@ GLuint TextureManager::GetID(const unsigned int texID){
 	//otherwise, binding failed
 	else
 		return 1000;
+}
+
+///Get ID
+GLuint TextureManager::GenerateID(){
+	return ++generateFrom;
 }

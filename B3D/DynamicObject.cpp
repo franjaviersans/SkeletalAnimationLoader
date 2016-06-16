@@ -20,6 +20,7 @@ void print(const glm::mat4 & m){
 					<< m[3][0] << " , " << m[3][1] << " , " << m[3][2] << " , " << m[3][3] << "} " << endl;
 }
 
+//auxiliar function
 inline glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4 from)
 {
 	glm::mat4 to;
@@ -43,12 +44,12 @@ inline glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4 from)
 * @params end the end frame of the animation
 *
 */
-DynamicObject::DynamicObject(GLfloat velocity, GLuint Width, GLuint Height, GLint start, GLint end)
+DynamicObject::DynamicObject(GLfloat velocity, GLuint Width, GLuint Height, GLfloat start, GLfloat end)
 {
 	m_fAnimationVelocity = velocity;
 
-	m_iStart = start;
-	m_iEnd = end;
+	m_fStart = start;
+	m_fEnd = end;
 
 	m_bb.Init();
 
@@ -60,7 +61,6 @@ DynamicObject::DynamicObject(GLfloat velocity, GLuint Width, GLuint Height, GLin
 */
 DynamicObject::~DynamicObject()
 {
-	glDeleteBuffers(1, &m_iVao);
 }
 
 
@@ -102,25 +102,24 @@ void DynamicObject::Import(const char *filename, const glm::mat4 &Transformation
 	// Process ASSIMP's root node recursively
 	ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f));
 
+	//init Vertex buffer object with the information
+	for (GLuint i = 0; i < m_vMeshes.size();++i) m_vMeshes[i].setupMesh();
 
 	//popullate the auxiliar array of transformations
-	for (GLuint i = 0; i < m_BoneInfo.size(); ++i){
+	for (GLuint i = 0; i < m_originalBoneTransform.size(); ++i){
 		glm::mat4 m = glm::mat4(1.0f);
-		m_transforms.push_back(m);
+		m_finalBoneTransforms.push_back(m);
 	}
 	
 }
 
-
-Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4 &TransformationMatrix)
+/**
+ Process the mesh to obtain the object and bones
+*/
+void DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4 &TransformationMatrix, Mesh &data)
 {
 
 	if (!mesh->HasBones()) cout << "This mesh doesn't have bones" << endl;
-	
-	
-	cout << "Testing some stuff " << mesh->mNumBones << endl;
-
-	Mesh data;
 
 
 	// Walk through each of the mesh's vertices
@@ -152,7 +151,7 @@ Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::m
 			// A vertex can contain up to 8 different texture coordinates. We thus make the assumption that we won't 
 			// use models where a vertex can have multiple texture coordinates so we always take the first set (0).
 			vertex.TextureCoord.x = mesh->mTextureCoords[0][i].x;
-			vertex.TextureCoord.y = mesh->mTextureCoords[0][i].y;
+			vertex.TextureCoord.y = 1.0f - mesh->mTextureCoords[0][i].y;
 		}
 		else
 			vertex.TextureCoord = glm::vec2(0.0f, 0.0f);
@@ -170,8 +169,6 @@ Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::m
 	}
 
 
-
-
 	//Process Bones
 	for (GLuint j = 0; j < mesh->mNumBones; ++j){
 		GLuint BoneIndex = 0;
@@ -181,8 +178,7 @@ Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::m
 		if (m_BoneMapping.find(BoneName) == m_BoneMapping.end()) {
 			BoneIndex = m_NumBones;
 			m_NumBones++;
-			BoneInfo bi;
-			m_BoneInfo.push_back(bi);
+			m_originalBoneTransform.push_back(glm::mat4());
 		}
 		else{
 			BoneIndex = m_BoneMapping[BoneName];
@@ -190,7 +186,7 @@ Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::m
 
 		//Store the information of the bone
 		m_BoneMapping[BoneName] = BoneIndex;
-		m_BoneInfo[BoneIndex].m_Offset = aiMatrix4x4ToGlm(mesh->mBones[j]->mOffsetMatrix);
+		m_originalBoneTransform[BoneIndex] = aiMatrix4x4ToGlm(mesh->mBones[j]->mOffsetMatrix);
 
 
 		//search for every where does he influences
@@ -212,39 +208,58 @@ Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::m
 
 	}
 
-	
-	//create the VBO and VAO for this mesh
-	data.setupMesh();
-
-	
-
-
-
-
-
 	// Process materials
 	if (mesh->mMaterialIndex >= 0)
 	{
-		/*aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-		// We assume a convention for sampler names in the shaders. Each diffuse texture should be named
-		// as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER. 
-		// Same applies to other texture as the following list summarizes:
-		// Diffuse: texture_diffuseN
-		// Specular: texture_specularN
-		// Normal: texture_normalN
+		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-		// 1. Diffuse maps
-		vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-		// 2. Specular maps
-		vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());*/
+		if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0){
+			//get file name
+			aiString str;
+			material->GetTexture(aiTextureType_DIFFUSE, 0, &str); 
+			std::string ssss(str.data);
+
+			std::size_t found = ssss.find_last_of("/\\");
+			std::string fileName = ssss.substr(found + 1);
+
+
+			data.m_uitextureID = 90000;
+
+			//search if texture is already loaded
+			for (GLuint i = 0; i< m_vMeshes.size();++i){
+				if (m_vMeshes[i].m_textureName.compare(fileName) == 0){
+					data.m_uitextureID = m_vMeshes[i].m_uitextureID;
+					i = m_vMeshes.size();
+				}
+				
+			}
+
+			//If not... load it
+			if (data.m_uitextureID == 90000){
+				data.m_uitextureID = TextureManager::Inst()->GenerateID();
+				cout << m_directory + fileName << endl;
+				data.m_textureName = fileName;
+
+				if (!TextureManager::Inst()->LoadTexture2D((m_directory +"/"+ fileName).c_str(), data.m_uitextureID)){
+					cout << "Error Loading texture" << endl;
+					exit(0);
+				}
+				TextureManager::Inst()->BindTexture(data.m_uitextureID);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+
+			}
+		}
 	}
-
-	// Return a mesh object created from the extracted mesh data
-	return data;
 }
 
+/**
+ Process a node in the hierarchy to obtain the mesh
+*/
 void DynamicObject::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4 &TransformationMatrix)
 {
 
@@ -257,7 +272,8 @@ void DynamicObject::ProcessNode(aiNode* node, const aiScene* scene, const glm::m
 		// The scene contains all the data, node is just to keep stuff organized (like relations between nodes).
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
 		
-		m_vMeshes.push_back(ProcessMesh(mesh, scene, TransformationMatrix * trans));
+		m_vMeshes.resize(m_vMeshes.size() + 1);
+		ProcessMesh(mesh, scene, TransformationMatrix * trans, m_vMeshes[m_vMeshes.size() - 1]);
 	}
 	// After we've processed all of the meshes (if any) we then recursively process each of the children nodes
 	for (GLuint i = 0; i < node->mNumChildren; i++)
@@ -286,35 +302,26 @@ void DynamicObject::Animate (float time)
 
 	m_fInterpolation += time * m_fAnimationVelocity;
 
-	/*if ((m_iFrame < m_iStart) || (m_iFrame > m_iEnd))
-	m_iFrame = m_iStart;
-
-	if (m_fInterpolation >= 1.0f)
-	{
-		/* Move to next frame 
-		m_fInterpolation = 0.0f;
-		(m_iFrame)++;
-
-		if (m_iFrame >= m_iEnd)
-			m_iFrame = m_iStart;
-	}*/
-
 	if (scene->mAnimations[0]->mDuration < m_fInterpolation) m_fInterpolation = 0.0f;
 
-	float TicksPerSecond = scene->mAnimations[0]->mTicksPerSecond != 0 ? scene->mAnimations[0]->mTicksPerSecond : 25.0f;
-	float TimeInTicks = m_fInterpolation * TicksPerSecond;
-	float AnimationTime = fmod(TimeInTicks, scene->mAnimations[0]->mDuration);
-
+	double TicksPerSecond = scene->mAnimations[0]->mTicksPerSecond != 0 ? scene->mAnimations[0]->mTicksPerSecond : 25.0f;
+	double TimeInTicks = m_fInterpolation * TicksPerSecond;
+	double AnimationTime = fmod(TimeInTicks, scene->mAnimations[0]->mDuration);
 
 	//All meshes are already moved
 	glm::mat4 m = glm::mat4(1.0f);
 
 	//begin to transverse the hierarchy, updating the bone structure
-	BoneHeirarchyTransform(AnimationTime, scene->mRootNode, m);
+	BoneHeirarchyTransform(float(AnimationTime), scene->mRootNode, m);
 
+	if (TimeInTicks > m_fEnd) m_fInterpolation = m_fStart / TicksPerSecond;
+	if (TimeInTicks < m_fStart) m_fInterpolation = m_fStart / TicksPerSecond;
+	
 }
 
-
+/**
+Function to process the bone hierarchy
+*/
 void DynamicObject::BoneHeirarchyTransform(float AnimationTime, const aiNode *pNode, const glm::mat4 & parentTransform)
 {
 	string Nodename(pNode->mName.data);
@@ -334,13 +341,10 @@ void DynamicObject::BoneHeirarchyTransform(float AnimationTime, const aiNode *pN
 		}
 	}
 
-	if (pNodeAnim){
+	//calculate interpolation
+	if (pNodeAnim) NodeTrans = Interpolatedtransformation(AnimationTime, pNodeAnim);
 		
-		NodeTrans = Interpolatedtransformation(AnimationTime, pNodeAnim);
-		
-	}
-
-	
+	//concatenate with father's transformation
 	glm::mat4 GLobaltransform = parentTransform * NodeTrans;
 
 	//set the transformation that it is going to the shader
@@ -348,11 +352,11 @@ void DynamicObject::BoneHeirarchyTransform(float AnimationTime, const aiNode *pN
 		
 		GLuint BoneIndex = m_BoneMapping[Nodename];
 		
-		m_transforms[BoneIndex] = 
-									m_userTransform *				//move to the space selected by the user
-									m_GlobalInverseTransform *		//move to object space
-									GLobaltransform *				//corresponding animation
-									m_BoneInfo[BoneIndex].m_Offset	//bone space 
+		m_finalBoneTransforms[BoneIndex] =
+									m_userTransform *					//move to the space selected by the user
+									m_GlobalInverseTransform *			//move to object space
+									GLobaltransform *					//corresponding animation
+									m_originalBoneTransform[BoneIndex]	//bone space 
 									; 
 	}
 
@@ -362,12 +366,15 @@ void DynamicObject::BoneHeirarchyTransform(float AnimationTime, const aiNode *pN
 	}
 }
 
+
+/**
+Function to obtain the interpolated animation in a specific time
+*/
 glm::mat4 DynamicObject::Interpolatedtransformation(float AnimationTime, const  aiNodeAnim * pNodeAnim){
 
 	glm::quat q;
 	glm::vec3 scale;
 	glm::vec3 trans;
-
 
 	//calculate rotation
 	if (pNodeAnim->mNumRotationKeys == 1){
@@ -380,7 +387,7 @@ glm::mat4 DynamicObject::Interpolatedtransformation(float AnimationTime, const  
 		//search for the correct time
 		for (GLuint i = 0; i < pNodeAnim->mNumRotationKeys - 1; ++i){
 
-			//calculate the 
+			//calculate the new rotation with previous an new frame
 			if (pNodeAnim->mRotationKeys[i + 1].mTime > AnimationTime){
 				glm::quat q1;
 				q1.x = pNodeAnim->mRotationKeys[i].mValue.x;
@@ -417,7 +424,7 @@ glm::mat4 DynamicObject::Interpolatedtransformation(float AnimationTime, const  
 		//search for the correct time
 		for (GLuint i = 0; i < pNodeAnim->mNumScalingKeys - 1; ++i){
 
-			//calculate the 
+			//calculate the new scale with previous an new frame
 			if (pNodeAnim->mScalingKeys[i + 1].mTime > AnimationTime){
 				glm::vec3 s1;
 				s1.x = pNodeAnim->mScalingKeys[i].mValue.x;
@@ -452,7 +459,7 @@ glm::mat4 DynamicObject::Interpolatedtransformation(float AnimationTime, const  
 		//search for the correct time
 		for (GLuint i = 0; i < pNodeAnim->mNumPositionKeys - 1; ++i){
 
-			//calculate the 
+			//calculate the new position with previous an new frame
 			if (pNodeAnim->mPositionKeys[i + 1].mTime > AnimationTime){
 				glm::vec3 trans1;
 				trans1.x = pNodeAnim->mPositionKeys[i].mValue.x;
@@ -473,6 +480,7 @@ glm::mat4 DynamicObject::Interpolatedtransformation(float AnimationTime, const  
 		}
 	}
 	
+	//concatenate all the interpolated transformations
 	return		glm::translate(glm::mat4(), trans) * 
 				glm::mat4_cast(glm::normalize(q))  *
 				glm::scale(glm::mat4(), scale);
@@ -484,38 +492,11 @@ glm::mat4 DynamicObject::Interpolatedtransformation(float AnimationTime, const  
 */
 void DynamicObject::Draw()
 {
+
 	for (GLuint i = 0; i < m_vMeshes.size(); ++i){
 		m_vMeshes[i].Draw();
 	}
 }
-
-/**
-* Method to Load texture (If any)
-*
-* @params m_Object a pointer to the md2 structure
-* 
-*/
-/*void DynamicObject::LoadTexture(md2_model_t * m_Object)
-{
-	if(m_Object->header.num_skins != 0)
-	{
-
-		m_pText = new Texture();
-		int flo = m_sFile.find_last_of("/");
-		if (!m_pText->LoadTexture((m_sFile.substr(0,flo) + "/" + m_Object->skins[0].name).c_str())) {
-			delete(m_pText);
-			m_pText = NULL;
-			m_pText = new Texture();
-			m_pText->LoadTexture("Scene/white.png");
-		}
-	}
-	else
-	{
-		//Load a white texture in case the model doesn't have one
-		m_pText = new Texture();
-		m_pText->LoadTexture("Scene/white.png");
-	}
-}*/
 
 
 /**

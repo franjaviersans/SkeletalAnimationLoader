@@ -9,8 +9,8 @@ uniform mat4 Projection;
 uniform mat4 gBones[MAX_BONES];
 
 layout(location = 0) in vec4 glVertex;
-layout(location = 1) in vec2 glTexCoord;
-layout(location = 2) in vec3 glNormal;
+layout(location = 1) in vec3 glNormal;
+layout(location = 2) in vec2 glTexCoord;
 layout(location = 3) in ivec4 glBoneIDs;
 layout(location = 4) in vec4 glWeights;
 

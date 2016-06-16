@@ -66,6 +66,9 @@ public:
 	///Get OpenGL ID
 	GLuint GetID(const unsigned int texID);
 
+	///Get ID
+	GLuint GenerateID();
+
 protected:
 
 	struct tex{
@@ -79,6 +82,7 @@ protected:
 	TextureManager& operator=(const TextureManager& tm);
 
 	static TextureManager* m_inst;
+	GLuint generateFrom;
 	std::map<unsigned int, tex> m_texID;
 };
 

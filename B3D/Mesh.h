@@ -30,9 +30,27 @@ public:
 	GLuint m_uiVbo;
 	GLuint m_uiIndexVbo;
 	GLuint m_uitextureID;
+	GLboolean init;
+	GLuint m_iSize;
+	std::string m_textureName;
 
+
+	Mesh() : init(false), m_uiVao(5000), m_uiIndexVbo(5000), m_uiVbo(5000), m_textureName(""){};
+
+
+	~Mesh(){
+		if (init){
+			if (m_uiVao != 5000)
+			glDeleteVertexArrays(1, &m_uiVao);
+			if (m_uiIndexVbo != 5000)
+			glDeleteBuffers(1, &m_uiIndexVbo);
+			if (m_uiVbo  != 5000)
+			glDeleteBuffers(1, &m_uiVbo);
+		}
+	}
 
 	void setupMesh(){
+		init = true;
 		glGenBuffers(1, &m_uiVbo);
 		glGenBuffers(1, &m_uiIndexVbo);
 
@@ -81,12 +99,22 @@ public:
 		//Disable Buffers and vertex attributes
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+
+		m_iSize = m_vIndex.size();
+
+		m_vVertexInfo.clear();
+		m_vIndex.clear();
 	}
 
 	void Draw(){
+
+		glActiveTexture(GL_TEXTURE0);
+		TextureManager::Inst()->BindTexture(m_uitextureID);
+
 		// Draw mesh
 		glBindVertexArray(m_uiVao);
-		glDrawElements(GL_TRIANGLES, m_vIndex.size(), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, m_iSize, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 
