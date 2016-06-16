@@ -29,6 +29,7 @@ namespace glfwFunc
 
 	float color[] = { 1, 1, 1 };
 	bool pintar = false;
+	double lastime;
 
 	GLSLProgram m_program;
 	glm::mat4x4 mProjMatrix, mModelViewMatrix, mMVP;
@@ -149,20 +150,25 @@ namespace glfwFunc
 		m_program.use();
 		{
 
-			mModelViewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -3.0f));
+			mModelViewMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -3.0f))
+				* glm::rotate(180.0f * 3.14159f / 180.0f,glm::vec3(0.0f,1.0f,0.0f));
 
 			m_program.setUniform("Projection", mProjMatrix);
 			m_program.setUniform("modelView", mModelViewMatrix);
 
+			//update frame transformations
+			double now = glfwGetTime();
+			dynamicObj->Animate(now - lastime);
+			lastime = now;
 
-			
 
-			/*md2file->Animate(double(0));
-			md2file->UpdateVAO();*/
+			//pass bone information transformation to shader
+			GLuint count = 0;
+			std::vector<glm::mat4> arr = dynamicObj->getBonesMatrix(count);
+			m_program.setUniform("gBones", count, arr.data());
 
-			//glFrontFace(GL_CW);
+
 			dynamicObj->Draw();
-			//glFrontFace(GL_CCW);
 		}
 
 		glfwSwapBuffers(glfwWindow);
@@ -176,7 +182,7 @@ namespace glfwFunc
 	bool initialize()
 	{
 		glEnable(GL_DEPTH_TEST);
-		glDisable(GL_CULL_FACE);
+		glEnable(GL_CULL_FACE);
 		glFrontFace(GL_CCW);
 		glCullFace(GL_BACK);
 
@@ -212,33 +218,26 @@ namespace glfwFunc
 		}
 
 
-		dynamicObj = new DynamicObject(1.0f, 512, 512, 0, 15);
+		dynamicObj = new DynamicObject(0.5f, 512, 512, 1, 13.6);
 
 
-		//glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 0.0f))*glm::scale(glm::vec3(0.02, 0.02, 0.02))
 
-		//glm::scale(glm::vec3(0.208715f)) * glm::translate(glm::mat4(), glm::vec3(0.0f, -4.79286f, 1.71198))
-		
 		//dynamicObj->Import("Model/ninja/ninja.b3d", glm::mat4(1.0f));
-
 		dynamicObj->Import("Model/ninja/ninja.b3d", glm::scale(glm::vec3(0.208715f)) * glm::translate(glm::mat4(), glm::vec3(0.0f, -4.79286f, 1.71198)));
 
-		cout << dynamicObj->GetBoundingBox().m_fMinx << " " << dynamicObj->GetBoundingBox().m_fMiny << " " << dynamicObj->GetBoundingBox().m_fMinz << endl <<
+
+
+		/*cout << dynamicObj->GetBoundingBox().m_fMinx << " " << dynamicObj->GetBoundingBox().m_fMiny << " " << dynamicObj->GetBoundingBox().m_fMinz << endl <<
 			"  " << dynamicObj->GetBoundingBox().m_fMaxx << " " << dynamicObj->GetBoundingBox().m_fMaxy << " " << dynamicObj->GetBoundingBox().m_fMaxz << endl;
-
-
 		glm::mat4 trans = glm::translate(glm::mat4(), glm::vec3(
 			(dynamicObj->GetBoundingBox().m_fMaxx + dynamicObj->GetBoundingBox().m_fMinx) / 2.0f,
 			(dynamicObj->GetBoundingBox().m_fMaxy + dynamicObj->GetBoundingBox().m_fMiny) / 2.0f,
 			(dynamicObj->GetBoundingBox().m_fMaxz + dynamicObj->GetBoundingBox().m_fMinz) / 2.0f)
 									);
-
 		float s = 1.0f / max((dynamicObj->GetBoundingBox().m_fMaxx - dynamicObj->GetBoundingBox().m_fMinx)/2.0f,
 			max((dynamicObj->GetBoundingBox().m_fMaxy - dynamicObj->GetBoundingBox().m_fMiny) / 2.0f,
 			(dynamicObj->GetBoundingBox().m_fMaxz - dynamicObj->GetBoundingBox().m_fMinz) / 2.0f));
-
 		glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(s));
-
 		cout << s << endl;
 		cout << (dynamicObj->GetBoundingBox().m_fMaxx + dynamicObj->GetBoundingBox().m_fMinx) / 2.0f << "  " << 
 			(dynamicObj->GetBoundingBox().m_fMaxy + dynamicObj->GetBoundingBox().m_fMiny) / 2.0f << "  " << 
@@ -246,10 +245,8 @@ namespace glfwFunc
 
 		glm::mat4 trans2 = glm::translate(glm::mat4(), glm::vec3(0.0f,0.0f, -3.0f));
 
-		mModelViewMatrix = trans2 * scale * -trans;
+		mModelViewMatrix = trans2 * scale * -trans;*/
 
-
-		mModelViewMatrix = trans2;
 
 		return true;
 	}

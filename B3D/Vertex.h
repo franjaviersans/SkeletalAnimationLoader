@@ -12,6 +12,8 @@
 //Includes
 #include "Definitions.h"
 
+#define NumBones 4
+
 
 /**
 * Class Vertex.
@@ -24,17 +26,23 @@ class Vertex
 		glm::vec4 WorldCoord;
 		glm::vec3 NormalCoord;
 		glm::vec2 TextureCoord;
-		glm::vec4 BoneID;
-		glm::ivec4 BoneWeight;
+		GLint BoneID[NumBones];
+		GLfloat  BoneWeight[NumBones];
+		
+		
 
 		//Default Constructor
 		Vertex() :	
 			WorldCoord(0.0f, 0.0f, 0.0f, 0.0f),
 			NormalCoord(0.0f, 0.0f, 0.0f),
-			TextureCoord(0.0f, 0.0f),
-			BoneID(0, 0, 0, 0),
-			BoneWeight(0.0f, 0.0f, 0.0f, 0.0f)
-		{}
+			TextureCoord(0.0f, 0.0f)
+		{
+			for (int i = 0; i < NumBones; ++i){
+				BoneID[i] = 0;
+				BoneWeight[i] = 0.0f;
+			}
+
+		}
 };
 
 

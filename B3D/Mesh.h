@@ -30,9 +30,27 @@ public:
 	GLuint m_uiVbo;
 	GLuint m_uiIndexVbo;
 	GLuint m_uitextureID;
+	GLboolean init;
+	GLuint m_iSize;
+	std::string m_textureName;
 
+
+	Mesh() : init(false), m_uiVao(5000), m_uiIndexVbo(5000), m_uiVbo(5000), m_textureName(""){};
+
+
+	~Mesh(){
+		if (init){
+			if (m_uiVao != 5000)
+			glDeleteVertexArrays(1, &m_uiVao);
+			if (m_uiIndexVbo != 5000)
+			glDeleteBuffers(1, &m_uiIndexVbo);
+			if (m_uiVbo  != 5000)
+			glDeleteBuffers(1, &m_uiVbo);
+		}
+	}
 
 	void setupMesh(){
+		init = true;
 		glGenBuffers(1, &m_uiVbo);
 		glGenBuffers(1, &m_uiIndexVbo);
 
@@ -61,16 +79,18 @@ public:
 		glEnableVertexAttribArray(WORLD_COORD_LOCATION);
 		glEnableVertexAttribArray(NORMAL_COORD_LOCATION);
 		glEnableVertexAttribArray(TEXTURE_COORD_LOCATION);
-		glEnableVertexAttribArray(BONES_WEIGTH_LOCATION);
 		glEnableVertexAttribArray(BONES_ID_LOCATION);
+		glEnableVertexAttribArray(BONES_WEIGTH_LOCATION);
+
 		
 
 
 		glVertexAttribPointer(WORLD_COORD_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(0)); //Vertexs
 		glVertexAttribPointer(NORMAL_COORD_LOCATION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 4)); //Normals
 		glVertexAttribPointer(TEXTURE_COORD_LOCATION, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 7)); //Text Coords
-		glVertexAttribPointer(BONES_WEIGTH_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 9));
-		glVertexAttribIPointer(BONES_ID_LOCATION, 4, GL_INT, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 12));
+		glVertexAttribIPointer(BONES_ID_LOCATION, 4, GL_INT, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 9));
+		glVertexAttribPointer(BONES_WEIGTH_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 9 + sizeof(GL_INT) * 4));
+		
 
 		//Unbind the vertex array	
 		glBindVertexArray(0);
@@ -79,12 +99,22 @@ public:
 		//Disable Buffers and vertex attributes
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+
+		m_iSize = m_vIndex.size();
+
+		m_vVertexInfo.clear();
+		m_vIndex.clear();
 	}
 
 	void Draw(){
+
+		glActiveTexture(GL_TEXTURE0);
+		TextureManager::Inst()->BindTexture(m_uitextureID);
+
 		// Draw mesh
 		glBindVertexArray(m_uiVao);
-		glDrawElements(GL_TRIANGLES, m_vIndex.size(), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, m_iSize, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 
