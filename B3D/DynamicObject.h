@@ -33,7 +33,7 @@ class DynamicObject
 
 	public:
 		///Default constructor
-		DynamicObject(GLfloat velocity, GLuint Width, GLuint Height, GLfloat start, GLfloat end);
+		DynamicObject(GLfloat velocity, GLuint Width, GLuint Height, GLdouble start, GLdouble end);
 
 		///Default destructor
 		~DynamicObject();
@@ -42,7 +42,7 @@ class DynamicObject
 		void Import (const char *filename, const glm::mat4 &TransformationMatrix);
 
 		///Calculate the current frame in animation
-		void Animate (float time);
+		void Animate (double time);
 
 		///Render MD2 using Vertex Buffer Object
 		void Draw();	
@@ -70,7 +70,7 @@ class DynamicObject
 	//Variables
 
 	public:
-		GLfloat m_fInterpolation, m_fAnimationVelocity;
+		GLdouble m_fInterpolation, m_fAnimationVelocity;
 		std::vector<Mesh> m_vMeshes;
 		std::map<std::string, GLuint> m_BoneMapping;
 		GLuint m_NumBones;
@@ -81,7 +81,7 @@ class DynamicObject
 
 		/*Texture * m_pText;*/
 		std::string m_sFile;
-		GLfloat m_fStart, m_fEnd;
+		GLdouble m_fStart, m_fEnd;
 		BoundingBox m_bb;
 		std::string m_directory;
 		const aiScene* scene;
