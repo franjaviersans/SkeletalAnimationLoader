@@ -20,12 +20,12 @@ out vec2 Tex;
 void main()
 {
 
-	/*mat4 BoneTransform = gBones[BoneIDs[0]] * Weights[0];
-		BoneTransform += gBones[BoneIDs[1]] * Weights[1];
-		BoneTransform += gBones[BoneIDs[2]] * Weights[2];
-		BoneTransform += gBones[BoneIDs[3]] * Weights[3];*/
+	mat4 BoneTransform = gBones[glBoneIDs[0]] * glWeights[0];
+		BoneTransform += gBones[glBoneIDs[1]] * glWeights[1];
+		BoneTransform += gBones[glBoneIDs[2]] * glWeights[2];
+		BoneTransform += gBones[glBoneIDs[3]] * glWeights[3];
 
-	mat4 BoneTransform = mat4(1.0f);
+	//mat4 BoneTransform = mat4(1.0f);
 
 	vecPos = (Projection * modelView * BoneTransform * glVertex).xyz;
 	Tex = glTexCoord;

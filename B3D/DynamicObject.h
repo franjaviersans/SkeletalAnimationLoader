@@ -51,29 +51,25 @@ class DynamicObject
 		void Animate (float time);
 
 		///Render MD2 using Vertex Buffer Object
-		void Draw();
+		void Draw();	
 
-		///Update Vertex Buffer Object
-		void UpdateVAO();		
-
-		///Get Texture Width
-		GLuint GetTextureWidth();
-
-		///Get Texture Height
-		GLuint GetTextureHeight();
 
 		///Method to get Bounding Box
 		BoundingBox GetBoundingBox();
 
 		std::vector<glm::mat4>& getBonesMatrix(GLuint &count){ count = m_transforms.size(); return m_transforms; }
 
-		void BoneHeirarchyTransform(float AnimationTime, const aiNode *pNode, const glm::mat4 & parentTransform);
+		
 
 	private:
 		
 		Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4 &TransformationMatrix);
 
 		void ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4 &TransformationMatrix);
+
+		void BoneHeirarchyTransform(float AnimationTime, const aiNode *pNode, const glm::mat4 & parentTransform);
+
+		glm::mat4 Interpolatedtransformation(float AnimationTime, const aiNodeAnim * pNodeAnim);
 
 	//Variables
 
@@ -84,10 +80,12 @@ class DynamicObject
 		GLuint m_NumBones;
 		std::vector<BoneInfo> m_BoneInfo;
 		std::vector<glm::mat4> m_transforms;
+		glm::mat4 m_userTransform;
+		glm::mat4 m_GlobalInverseTransform;
 
 		/*Texture * m_pText;*/
 		std::string m_sFile;
-		GLuint m_iWidth, m_iHeight, m_iVao, m_Vbo, m_iFrame, m_iStart, m_iEnd;;
+		GLuint m_iVao, m_Vbo, m_iFrame, m_iStart, m_iEnd;;
 		BoundingBox m_bb;
 		std::string m_directory;
 		const aiScene* scene;

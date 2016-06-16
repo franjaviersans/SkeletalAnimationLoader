@@ -29,6 +29,7 @@ namespace glfwFunc
 
 	float color[] = { 1, 1, 1 };
 	bool pintar = false;
+	double lastime;
 
 	GLSLProgram m_program;
 	glm::mat4x4 mProjMatrix, mModelViewMatrix, mMVP;
@@ -159,7 +160,10 @@ namespace glfwFunc
 			std::vector<glm::mat4> arr = dynamicObj->getBonesMatrix(count);
 			m_program.setUniform("gBones", count, arr.data());
 
-			dynamicObj->Animate(double(0));
+
+			double now = glfwGetTime();
+			dynamicObj->Animate(now - lastime);
+			lastime = now;
 			//md2file->UpdateVAO();
 
 			dynamicObj->Draw();
@@ -212,13 +216,14 @@ namespace glfwFunc
 		}
 
 
-		dynamicObj = new DynamicObject(1.0f, 512, 512, 0, 15);
+		dynamicObj = new DynamicObject(0.5f, 512, 512, 0, 15);
 
 
 		//glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 0.0f))*glm::scale(glm::vec3(0.02, 0.02, 0.02))
 
 		//glm::scale(glm::vec3(0.208715f)) * glm::translate(glm::mat4(), glm::vec3(0.0f, -4.79286f, 1.71198))
 		
+		//dynamicObj->Import("Model/ninja/ninja.b3d", glm::mat4(1.0f));
 		//dynamicObj->Import("Model/ninja/ninja.b3d", glm::mat4(1.0f));
 
 		dynamicObj->Import("Model/ninja/ninja.b3d", glm::scale(glm::vec3(0.208715f)) * glm::translate(glm::mat4(), glm::vec3(0.0f, -4.79286f, 1.71198)));

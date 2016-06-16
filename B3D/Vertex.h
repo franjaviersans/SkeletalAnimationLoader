@@ -26,8 +26,10 @@ class Vertex
 		glm::vec4 WorldCoord;
 		glm::vec3 NormalCoord;
 		glm::vec2 TextureCoord;
-		float BoneID[NumBones];
-		GLuint BoneWeight[NumBones];
+		GLint BoneID[NumBones];
+		GLfloat  BoneWeight[NumBones];
+		
+		
 
 		//Default Constructor
 		Vertex() :	

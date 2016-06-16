@@ -12,17 +12,23 @@
 #include <iostream>
 using namespace std;
 
+void print(const glm::mat4 & m){
+	cout << "Begin:"
+		<< "{ "		<< m[0][0] << " , " << m[0][1] << " , " << m[0][2] << " , " << m[0][3] << endl
+					<< m[1][0] << " , " << m[1][1] << " , " << m[1][2] << " , " << m[1][3] << endl
+					<< m[2][0] << " , " << m[2][1] << " , " << m[2][2] << " , " << m[2][3] << endl
+					<< m[3][0] << " , " << m[3][1] << " , " << m[3][2] << " , " << m[3][3] << "} " << endl;
+}
 
-
-inline glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4* from)
+inline glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4 from)
 {
 	glm::mat4 to;
 
 
-	to[0][0] = (GLfloat)from->a1; to[0][1] = (GLfloat)from->b1;  to[0][2] = (GLfloat)from->c1; to[0][3] = (GLfloat)from->d1;
-	to[1][0] = (GLfloat)from->a2; to[1][1] = (GLfloat)from->b2;  to[1][2] = (GLfloat)from->c2; to[1][3] = (GLfloat)from->d2;
-	to[2][0] = (GLfloat)from->a3; to[2][1] = (GLfloat)from->b3;  to[2][2] = (GLfloat)from->c3; to[2][3] = (GLfloat)from->d3;
-	to[3][0] = (GLfloat)from->a4; to[3][1] = (GLfloat)from->b4;  to[3][2] = (GLfloat)from->c4; to[3][3] = (GLfloat)from->d4;
+	to[0][0] = (GLfloat)from.a1; to[0][1] = (GLfloat)from.b1;  to[0][2] = (GLfloat)from.c1; to[0][3] = (GLfloat)from.d1;
+	to[1][0] = (GLfloat)from.a2; to[1][1] = (GLfloat)from.b2;  to[1][2] = (GLfloat)from.c2; to[1][3] = (GLfloat)from.d2;
+	to[2][0] = (GLfloat)from.a3; to[2][1] = (GLfloat)from.b3;  to[2][2] = (GLfloat)from.c3; to[2][3] = (GLfloat)from.d3;
+	to[3][0] = (GLfloat)from.a4; to[3][1] = (GLfloat)from.b4;  to[3][2] = (GLfloat)from.c4; to[3][3] = (GLfloat)from.d4;
 
 	return to;
 }
@@ -40,9 +46,6 @@ inline glm::mat4 aiMatrix4x4ToGlm(const aiMatrix4x4* from)
 DynamicObject::DynamicObject(GLfloat velocity, GLuint Width, GLuint Height, GLint start, GLint end)
 {
 	m_fAnimationVelocity = velocity;
-
-	m_iWidth = Width;
-	m_iHeight = Height;
 
 	m_iStart = start;
 	m_iEnd = end;
@@ -90,12 +93,18 @@ void DynamicObject::Import(const char *filename, const glm::mat4 &Transformation
 	// Retrieve the directory path of the filepath
 	m_directory = pFile.substr(0, pFile.find_last_of('/'));
 
+
+	m_userTransform = TransformationMatrix;
+
+	m_GlobalInverseTransform = aiMatrix4x4ToGlm(scene->mRootNode->mTransformation);
+	m_GlobalInverseTransform = glm::inverse(m_GlobalInverseTransform);
+
 	// Process ASSIMP's root node recursively
-	ProcessNode(scene->mRootNode, scene, TransformationMatrix);
+	ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f));
 
 
 	//popullate the auxiliar array of transformations
-	for (int i = 0; i < m_BoneInfo.size(); ++i){
+	for (GLuint i = 0; i < m_BoneInfo.size(); ++i){
 		glm::mat4 m = glm::mat4(1.0f);
 		m_transforms.push_back(m);
 	}
@@ -181,7 +190,7 @@ Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::m
 
 		//Store the information of the bone
 		m_BoneMapping[BoneName] = BoneIndex;
-		m_BoneInfo[BoneIndex].m_Offset = aiMatrix4x4ToGlm(&mesh->mBones[j]->mOffsetMatrix);
+		m_BoneInfo[BoneIndex].m_Offset = aiMatrix4x4ToGlm(mesh->mBones[j]->mOffsetMatrix);
 
 
 		//search for every where does he influences
@@ -239,7 +248,7 @@ Mesh DynamicObject::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::m
 void DynamicObject::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4 &TransformationMatrix)
 {
 
-	glm::mat4 trans = aiMatrix4x4ToGlm(&node->mTransformation);
+	glm::mat4 trans = aiMatrix4x4ToGlm(node->mTransformation);
 
 	// Process each mesh located at the current node
 	for (GLuint i = 0; i < node->mNumMeshes; i++)
@@ -273,26 +282,35 @@ void DynamicObject::Animate (float time)
 	if(m_fInterpolation <= 0.0f)
 		m_fInterpolation  = 0.0f;
 	
+
+
 	m_fInterpolation += time * m_fAnimationVelocity;
 
-	if ((m_iFrame < m_iStart) || (m_iFrame > m_iEnd))
+	/*if ((m_iFrame < m_iStart) || (m_iFrame > m_iEnd))
 	m_iFrame = m_iStart;
 
 	if (m_fInterpolation >= 1.0f)
 	{
-		/* Move to next frame */
+		/* Move to next frame 
 		m_fInterpolation = 0.0f;
 		(m_iFrame)++;
 
 		if (m_iFrame >= m_iEnd)
 			m_iFrame = m_iStart;
-	}
+	}*/
 
-	std::cout << "Hola " << scene->mNumAnimations << std::endl;
+	if (scene->mAnimations[0]->mDuration < m_fInterpolation) m_fInterpolation = 0.0f;
 
+	float TicksPerSecond = scene->mAnimations[0]->mTicksPerSecond != 0 ? scene->mAnimations[0]->mTicksPerSecond : 25.0f;
+	float TimeInTicks = m_fInterpolation * TicksPerSecond;
+	float AnimationTime = fmod(TimeInTicks, scene->mAnimations[0]->mDuration);
+
+
+	//All meshes are already moved
 	glm::mat4 m = glm::mat4(1.0f);
 
-	BoneHeirarchyTransform(time, scene->mRootNode, m);
+	//begin to transverse the hierarchy, updating the bone structure
+	BoneHeirarchyTransform(AnimationTime, scene->mRootNode, m);
 
 }
 
@@ -300,21 +318,164 @@ void DynamicObject::Animate (float time)
 void DynamicObject::BoneHeirarchyTransform(float AnimationTime, const aiNode *pNode, const glm::mat4 & parentTransform)
 {
 	string Nodename(pNode->mName.data);
-	cout << pNode->mName.data << endl;
 	//const aiAnimation
 
+	const aiAnimation* pAnimation = scene->mAnimations[0];
+
+	glm::mat4 NodeTrans = aiMatrix4x4ToGlm(pNode->mTransformation);
+
+	//Search for the animation of the node
 	const aiNodeAnim * pNodeAnim = NULL;
 
-	glm::mat4 NodeTrans= glm::mat4(1.0f);
+	for (GLuint i = 0; i < pAnimation->mNumChannels; ++i){
+		if (pAnimation->mChannels[i]->mNodeName == pNode->mName){
+			pNodeAnim = scene->mAnimations[0]->mChannels[i];
+			break;
+		}
+	}
 
 	if (pNodeAnim){
+		
+		NodeTrans = Interpolatedtransformation(AnimationTime, pNodeAnim);
+		
+	}
 
+	
+	glm::mat4 GLobaltransform = parentTransform * NodeTrans;
+
+	//set the transformation that it is going to the shader
+	if (m_BoneMapping.find(Nodename) != m_BoneMapping.end()){
+		
+		GLuint BoneIndex = m_BoneMapping[Nodename];
+		
+		m_transforms[BoneIndex] = 
+									m_userTransform *				//move to the space selected by the user
+									m_GlobalInverseTransform *		//move to object space
+									GLobaltransform *				//corresponding animation
+									m_BoneInfo[BoneIndex].m_Offset	//bone space 
+									; 
+	}
+
+	//recusrivly move the other children
+	for (GLuint i = 0; i < pNode->mNumChildren; i++) {
+		BoneHeirarchyTransform(AnimationTime, pNode->mChildren[i], GLobaltransform);
+	}
+}
+
+glm::mat4 DynamicObject::Interpolatedtransformation(float AnimationTime, const  aiNodeAnim * pNodeAnim){
+
+	glm::quat q;
+	glm::vec3 scale;
+	glm::vec3 trans;
+
+
+	//calculate rotation
+	if (pNodeAnim->mNumRotationKeys == 1){
+		q.x = pNodeAnim->mRotationKeys[0].mValue.x;
+		q.y = pNodeAnim->mRotationKeys[0].mValue.y;
+		q.z = pNodeAnim->mRotationKeys[0].mValue.z;
+		q.w = pNodeAnim->mRotationKeys[0].mValue.w;
+	}
+	else{
+		//search for the correct time
+		for (GLuint i = 0; i < pNodeAnim->mNumRotationKeys - 1; ++i){
+
+			//calculate the 
+			if (pNodeAnim->mRotationKeys[i + 1].mTime > AnimationTime){
+				glm::quat q1;
+				q1.x = pNodeAnim->mRotationKeys[i].mValue.x;
+				q1.y = pNodeAnim->mRotationKeys[i].mValue.y;
+				q1.z = pNodeAnim->mRotationKeys[i].mValue.z;
+				q1.w = pNodeAnim->mRotationKeys[i].mValue.w;
+
+				glm::quat q2;
+				q2.x = pNodeAnim->mRotationKeys[i + 1].mValue.x;
+				q2.y = pNodeAnim->mRotationKeys[i + 1].mValue.y;
+				q2.z = pNodeAnim->mRotationKeys[i + 1].mValue.z;
+				q2.w = pNodeAnim->mRotationKeys[i + 1].mValue.w;
+
+				float Delta = float(pNodeAnim->mRotationKeys[i + 1].mTime - pNodeAnim->mRotationKeys[i].mTime);
+				float t = float((AnimationTime - pNodeAnim->mRotationKeys[i].mTime) / Delta);
+				q = q1 * (1.0f - t) + q2 * t;
+
+				//skip other iterations
+				i = pNodeAnim->mNumRotationKeys;
+			}
+		}
+			
+	}
+
+	
+
+	//calculate scale
+	if (pNodeAnim->mNumScalingKeys == 1){
+		scale.x = pNodeAnim->mScalingKeys[0].mValue.x;
+		scale.y = pNodeAnim->mScalingKeys[0].mValue.y;
+		scale.z = pNodeAnim->mScalingKeys[0].mValue.z;
+	}
+	else{
+		//search for the correct time
+		for (GLuint i = 0; i < pNodeAnim->mNumScalingKeys - 1; ++i){
+
+			//calculate the 
+			if (pNodeAnim->mScalingKeys[i + 1].mTime > AnimationTime){
+				glm::vec3 s1;
+				s1.x = pNodeAnim->mScalingKeys[i].mValue.x;
+				s1.y = pNodeAnim->mScalingKeys[i].mValue.y;
+				s1.z = pNodeAnim->mScalingKeys[i].mValue.z;
+
+				glm::vec3 s2;
+				s2.x = pNodeAnim->mScalingKeys[i + 1].mValue.x;
+				s2.y = pNodeAnim->mScalingKeys[i + 1].mValue.y;
+				s2.z = pNodeAnim->mScalingKeys[i + 1].mValue.z;
+
+				float Delta = float(pNodeAnim->mScalingKeys[i + 1].mTime - pNodeAnim->mScalingKeys[i].mTime);
+				float t = float((AnimationTime - pNodeAnim->mScalingKeys[i].mTime) / Delta);
+				scale = s1 * (1.0f - t) + s2 * t;
+
+				//skip other iterations
+				i = pNodeAnim->mNumScalingKeys;
+			}
+		}
 
 	}
 
-	glm::mat4 transform = parentTransform;
 
+	//calculate translation
+	if (pNodeAnim->mNumPositionKeys == 1){
+		trans.x = pNodeAnim->mPositionKeys[0].mValue.x;
+		trans.y = pNodeAnim->mPositionKeys[0].mValue.y;
+		trans.z = pNodeAnim->mPositionKeys[0].mValue.z;
+		
+	}
+	else{
+		//search for the correct time
+		for (GLuint i = 0; i < pNodeAnim->mNumPositionKeys - 1; ++i){
 
+			//calculate the 
+			if (pNodeAnim->mPositionKeys[i + 1].mTime > AnimationTime){
+				glm::vec3 trans1;
+				trans1.x = pNodeAnim->mPositionKeys[i].mValue.x;
+				trans1.y = pNodeAnim->mPositionKeys[i].mValue.y;
+				trans1.z = pNodeAnim->mPositionKeys[i].mValue.z;
+
+				glm::vec3 trans2;
+				trans2.x = pNodeAnim->mPositionKeys[i + 1].mValue.x;
+				trans2.y = pNodeAnim->mPositionKeys[i + 1].mValue.y;
+				trans2.z = pNodeAnim->mPositionKeys[i + 1].mValue.z;
+
+				float Delta = float(pNodeAnim->mPositionKeys[i + 1].mTime - pNodeAnim->mPositionKeys[i].mTime);
+				float t = float((AnimationTime - pNodeAnim->mPositionKeys[i].mTime) / Delta);
+				trans = trans1 * (1.0f - t) + trans2 * t;
+				//skip other iterations
+				i = pNodeAnim->mNumPositionKeys;
+			}
+		}
+	}
+	
+	return		glm::translate(glm::mat4(), trans) * 
+				glm::mat4_cast(glm::normalize(q))  *
+				glm::scale(glm::mat4(), scale);
 }
 
 
@@ -323,55 +484,9 @@ void DynamicObject::BoneHeirarchyTransform(float AnimationTime, const aiNode *pN
 */
 void DynamicObject::Draw()
 {
-	for (int i = 0; i < m_vMeshes.size(); ++i){
+	for (GLuint i = 0; i < m_vMeshes.size(); ++i){
 		m_vMeshes[i].Draw();
 	}
-}
-
-/**
-* Update Vertex Buffer Object
-*/
-void  DynamicObject::UpdateVAO()
-{
-	
-	/* Check if n is in a valid range 
-	if ((m_iFrame < 0) || (m_iFrame > m_finalObject.size() - 1))
-	return;
-	
-	Vertex aux_vertex;
-
-	for(GLuint i=0 ;i < m_finalObject[m_iFrame].size();++i)
-	{
-		
-		// Compute texture coordinates 
-		aux_vertex.TextureCoord = m_finalObject[m_iFrame][i].TextureCoord;
-
-			
-		// Interpolate normals 
-		aux_vertex.NormalCoord =	m_finalObject[m_iFrame][i].NormalCoord + 
-									m_fInterpolation * ( m_finalObject[m_iFrame + 1][i].NormalCoord
-														- m_finalObject[m_iFrame][i].NormalCoord);
-
-		// Interpolate vertices 
-		aux_vertex.WorldCoord = m_finalObject[m_iFrame][i].WorldCoord + 
-								m_fInterpolation * ( m_finalObject[m_iFrame + 1][i].WorldCoord
-														- m_finalObject[m_iFrame][i].WorldCoord);
-
-		m_vVertex[i] = aux_vertex;
-	}
-
-	//Bind Buffer to copy new data
-	glBindBuffer(GL_ARRAY_BUFFER, m_Vbo);
- 
-	//Free the buffer
-	glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STREAM_DRAW);
-
-	//Fill it with new data
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m_vVertex.size(), &m_vVertex[0], GL_STREAM_DRAW);
-
-	//Disable Buffers and vertex attributes
-	glBindBuffer(GL_ARRAY_BUFFER, 0);*/
-
 }
 
 /**
@@ -401,27 +516,6 @@ void  DynamicObject::UpdateVAO()
 		m_pText->LoadTexture("Scene/white.png");
 	}
 }*/
-
-/**
-* Get Texture Width
-*
-* @return width of the Texture
-*/
-GLuint DynamicObject::GetTextureWidth()
-{
-	return m_iWidth;
-}
-
-
-/**
-* Get Texture Height
-*
-* @return height of the Texture
-*/
-GLuint DynamicObject::GetTextureHeight()
-{
-	return m_iHeight;
-}
 
 
 /**

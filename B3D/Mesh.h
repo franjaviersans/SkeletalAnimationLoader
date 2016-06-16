@@ -61,16 +61,18 @@ public:
 		glEnableVertexAttribArray(WORLD_COORD_LOCATION);
 		glEnableVertexAttribArray(NORMAL_COORD_LOCATION);
 		glEnableVertexAttribArray(TEXTURE_COORD_LOCATION);
-		glEnableVertexAttribArray(BONES_WEIGTH_LOCATION);
 		glEnableVertexAttribArray(BONES_ID_LOCATION);
+		glEnableVertexAttribArray(BONES_WEIGTH_LOCATION);
+
 		
 
 
 		glVertexAttribPointer(WORLD_COORD_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(0)); //Vertexs
 		glVertexAttribPointer(NORMAL_COORD_LOCATION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 4)); //Normals
 		glVertexAttribPointer(TEXTURE_COORD_LOCATION, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 7)); //Text Coords
-		glVertexAttribPointer(BONES_WEIGTH_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 9));
-		glVertexAttribIPointer(BONES_ID_LOCATION, 4, GL_INT, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 12));
+		glVertexAttribIPointer(BONES_ID_LOCATION, 4, GL_INT, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 9));
+		glVertexAttribPointer(BONES_WEIGTH_LOCATION, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), BUFFER_OFFSET(sizeof(GL_FLOAT) * 9 + sizeof(GL_INT) * 4));
+		
 
 		//Unbind the vertex array	
 		glBindVertexArray(0);
